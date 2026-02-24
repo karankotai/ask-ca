@@ -1,0 +1,244 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model achievements {
+  id        String    @id @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
+  user_id   String    @db.Uuid
+  type      String    @db.VarChar(50)
+  label     String    @db.VarChar(100)
+  emoji     String    @db.VarChar(10)
+  earned_at DateTime? @default(now()) @db.Timestamptz(6)
+  users     users     @relation(fields: [user_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+
+  @@unique([user_id, type])
+  @@index([user_id], map: "idx_achievements_user_id")
+}
+
+/// This table contains check constraints and requires additional setup for migrations. Visit https://pris.ly/d/check-constraints for more info.
+model applets {
+  id             String           @id @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
+  type           applet_type
+  title          String           @db.VarChar(255)
+  question       String
+  hint           String?
+  content        Json
+  difficulty     Int?             @default(1)
+  tags           String[]         @default([])
+  is_active      Boolean?         @default(true)
+  created_at     DateTime?        @default(now()) @db.Timestamptz(6)
+  updated_at     DateTime?        @default(now()) @db.Timestamptz(6)
+  explanation    String?
+  lesson_applets lesson_applets[]
+
+  @@index([difficulty], map: "idx_applets_difficulty")
+  @@index([is_active], map: "idx_applets_is_active")
+  @@index([tags], map: "idx_applets_tags", type: Gin)
+  @@index([type], map: "idx_applets_type")
+}
+
+model course_lessons {
+  id                   String                 @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  unit_id              String                 @db.Uuid
+  title                String                 @db.VarChar(255)
+  description          String?
+  emoji                String?                @default("📖") @db.VarChar(10)
+  sort_order           Int                    @default(0)
+  xp_reward            Int?                   @default(10)
+  is_checkpoint_review Boolean?               @default(false)
+  created_at           DateTime?              @default(now()) @db.Timestamptz(6)
+  course_units         course_units           @relation(fields: [unit_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  lesson_applets       lesson_applets[]
+  user_course_progress user_course_progress[]
+  user_lesson_progress user_lesson_progress[]
+
+  @@index([unit_id, sort_order], map: "idx_course_lessons_unit")
+}
+
+model course_units {
+  id             String           @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  course_id      String           @db.Uuid
+  title          String           @db.VarChar(255)
+  description    String?
+  sort_order     Int              @default(0)
+  is_checkpoint  Boolean?         @default(false)
+  created_at     DateTime?        @default(now()) @db.Timestamptz(6)
+  course_lessons course_lessons[]
+  courses        courses          @relation(fields: [course_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+
+  @@index([course_id, sort_order], map: "idx_course_units_course")
+}
+
+model courses {
+  id                   String                 @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  title                String                 @db.VarChar(255)
+  description          String?
+  emoji                String?                @default("📘") @db.VarChar(10)
+  color                String?                @default("#1CB0F6") @db.VarChar(7)
+  is_published         Boolean?               @default(false)
+  sort_order           Int?                   @default(0)
+  created_at           DateTime?              @default(now()) @db.Timestamptz(6)
+  updated_at           DateTime?              @default(now()) @db.Timestamptz(6)
+  course_units         course_units[]
+  user_course_progress user_course_progress[]
+}
+
+model lesson_applets {
+  id             String         @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  lesson_id      String         @db.Uuid
+  applet_id      String         @db.Uuid
+  sort_order     Int            @default(0)
+  applets        applets        @relation(fields: [applet_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  course_lessons course_lessons @relation(fields: [lesson_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+
+  @@unique([lesson_id, applet_id])
+  @@index([lesson_id, sort_order], map: "idx_lesson_applets_lesson")
+}
+
+model migrations {
+  id          Int       @id @default(autoincrement())
+  name        String    @unique @db.VarChar(255)
+  executed_at DateTime? @default(now()) @db.Timestamptz(6)
+}
+
+model sessions {
+  id                 String    @id @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
+  user_id            String    @db.Uuid
+  refresh_token_hash String    @db.VarChar(255)
+  expires_at         DateTime  @db.Timestamptz(6)
+  created_at         DateTime? @default(now()) @db.Timestamptz(6)
+  last_used_at       DateTime? @default(now()) @db.Timestamptz(6)
+  users              users     @relation(fields: [user_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+
+  @@index([expires_at], map: "idx_sessions_expires_at")
+  @@index([user_id], map: "idx_sessions_user_id")
+}
+
+model user_course_progress {
+  id                String          @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  user_id           String          @db.Uuid
+  course_id         String          @db.Uuid
+  current_lesson_id String?         @db.Uuid
+  started_at        DateTime?       @default(now()) @db.Timestamptz(6)
+  completed_at      DateTime?       @db.Timestamptz(6)
+  courses           courses         @relation(fields: [course_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  course_lessons    course_lessons? @relation(fields: [current_lesson_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  users             users           @relation(fields: [user_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+
+  @@unique([user_id, course_id])
+  @@index([user_id], map: "idx_user_course_progress_user")
+}
+
+model user_lesson_progress {
+  id             String         @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  user_id        String         @db.Uuid
+  lesson_id      String         @db.Uuid
+  completed_at   DateTime?      @default(now()) @db.Timestamptz(6)
+  score          Int?           @default(0)
+  course_lessons course_lessons @relation(fields: [lesson_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  users          users          @relation(fields: [user_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+
+  @@unique([user_id, lesson_id])
+  @@index([user_id], map: "idx_user_lesson_progress_user")
+}
+
+model user_profiles {
+  id                 String    @id @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
+  user_id            String    @unique @db.Uuid
+  display_name       String?   @db.VarChar(100)
+  avatar_url         String?   @db.VarChar(500)
+  level              Int       @default(1)
+  xp                 Int       @default(0)
+  xp_to_next_level   Int       @default(100)
+  title              String?   @default("Novice Learner") @db.VarChar(100)
+  bio                String?
+  created_at         DateTime? @default(now()) @db.Timestamptz(6)
+  updated_at         DateTime? @default(now()) @db.Timestamptz(6)
+  current_streak     Int?      @default(0)
+  longest_streak     Int?      @default(0)
+  last_activity_date DateTime? @db.Date
+  daily_xp           Int?      @default(0)
+  daily_goal         Int?      @default(50)
+  users              users     @relation(fields: [user_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+}
+
+model users {
+  id                   String                 @id @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
+  email                String                 @unique @db.VarChar(255)
+  name                 String                 @db.VarChar(255)
+  password_hash        String?                @db.VarChar(255)
+  created_at           DateTime?              @default(now()) @db.Timestamptz(6)
+  updated_at           DateTime?              @default(now()) @db.Timestamptz(6)
+  google_id            String?                @db.VarChar(255)
+  achievements         achievements[]
+  sessions             sessions[]
+  user_course_progress user_course_progress[]
+  user_lesson_progress user_lesson_progress[]
+  user_profiles        user_profiles?
+}
+
+model EvalRun {
+  id               String   @id @default(cuid())
+  createdAt        DateTime @default(now())
+  question         String
+  groundTruth      String?
+  sourceFilter     String?
+  ragAnswer        String
+  ragAvgScore      Float
+  ragTotalScore    Int
+  vanillaAnswer    String
+  vanillaAvgScore  Float
+  vanillaTotalScore Int
+  ragAdvantage     Float
+  ragScores        Json
+  vanillaScores    Json
+  ragSources       Json
+}
+
+model ScrapedDocument {
+  id             Int      @id @default(autoincrement())
+  source         String
+  crawler        String
+  title          String   @default("")
+  date           String   @default("")
+  department     String   @default("")
+  link           String?  @unique
+  details        String   @default("")
+  content        String   @default("")
+  circularNumber String   @default("") @map("circular_number")
+  pdfLinks       Json     @default("[]") @map("pdf_links")
+  extra          Json     @default("{}")
+  createdAt      DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt      DateTime @default(now()) @map("updated_at") @db.Timestamptz(6)
+
+  @@map("scraped_documents")
+  @@index([crawler])
+  @@index([source])
+}
+
+enum applet_type {
+  code_blocks           @map("code-blocks")
+  slope_graph           @map("slope-graph")
+  chess
+  mcq
+  fill_blanks           @map("fill-blanks")
+  venn_diagram          @map("venn-diagram")
+  highlight_text        @map("highlight-text")
+  comparative_advantage @map("comparative-advantage")
+  ordering
+  color_mixing          @map("color-mixing")
+  map_select            @map("map-select")
+  categorization_grid   @map("categorization-grid")
+  fraction_visualizer   @map("fraction-visualizer")
+  chart_reading         @map("chart-reading")
+  match_pairs           @map("match-pairs")
+  interactive_diagram   @map("interactive-diagram")
+  thought_tree          @map("thought-tree")
+  circuit_builder       @map("circuit-builder")
+  room_design           @map("room-design")
+}

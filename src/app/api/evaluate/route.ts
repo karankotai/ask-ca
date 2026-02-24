@@ -1,0 +1,31 @@
+import { NextRequest, NextResponse } from "next/server";
+
+const RAG_URL = process.env.RAG_URL || "http://127.0.0.1:8000";
+
+export async function POST(req: NextRequest) {
+  const body = await req.json();
+
+  try {
+    const res = await fetch(`${RAG_URL}/evaluate`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(body),
+    });
+
+    if (!res.ok) {
+      const text = await res.text();
+      return NextResponse.json(
+        { error: text || "RAG service returned an error." },
+        { status: res.status }
+      );
+    }
+
+    const data = await res.json();
+    return NextResponse.json(data);
+  } catch {
+    return NextResponse.json(
+      { error: "Could not connect to RAG service at " + RAG_URL },
+      { status: 502 }
+    );
+  }
+}
