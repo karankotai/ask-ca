@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 
-const RAG_URL = process.env.RAG_URL || "http://127.0.0.1:8000";
+const RAG_URL = process.env.RAG_URL!;
 
 export async function POST(req: NextRequest) {
   const body = await req.json();
@@ -31,15 +31,21 @@ export async function POST(req: NextRequest) {
         question: r.question,
         groundTruth: r.ground_truth ?? null,
         sourceFilter: body.source_filter ?? null,
+        baselines: body.baselines ?? ["gpt", "gemini"],
         ragAnswer: r.rag_eval.answer,
         ragAvgScore: r.rag_eval.average_score,
         ragTotalScore: r.rag_eval.total_score,
-        vanillaAnswer: r.vanilla_eval.answer,
-        vanillaAvgScore: r.vanilla_eval.average_score,
-        vanillaTotalScore: r.vanilla_eval.total_score,
-        ragAdvantage: r.rag_advantage,
+        gptAnswer: r.vanilla_gpt_eval?.answer ?? null,
+        gptAvgScore: r.vanilla_gpt_eval?.average_score ?? null,
+        gptTotalScore: r.vanilla_gpt_eval?.total_score ?? null,
+        geminiAnswer: r.vanilla_gemini_eval?.answer ?? null,
+        geminiAvgScore: r.vanilla_gemini_eval?.average_score ?? null,
+        geminiTotalScore: r.vanilla_gemini_eval?.total_score ?? null,
+        ragAdvantageVsGpt: r.rag_advantage_vs_gpt ?? null,
+        ragAdvantageVsGemini: r.rag_advantage_vs_gemini ?? null,
         ragScores: r.rag_eval.scores,
-        vanillaScores: r.vanilla_eval.scores,
+        gptScores: r.vanilla_gpt_eval?.scores ?? null,
+        geminiScores: r.vanilla_gemini_eval?.scores ?? null,
         ragSources: r.rag_sources,
       },
     });

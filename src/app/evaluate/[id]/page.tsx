@@ -1,19 +1,13 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
+import { useParams } from "next/navigation";
 import Link from "next/link";
 
 interface CriterionScore {
   criterion: string;
   score: number;
   reasoning: string;
-}
-
-interface SingleAnswerEval {
-  answer: string;
-  scores: CriterionScore[];
-  total_score: number;
-  average_score: number;
 }
 
 interface Source {
@@ -26,24 +20,28 @@ interface Source {
   pdf_links: string[];
 }
 
-interface QuestionEvalResult {
+interface EvalRun {
+  id: string;
+  createdAt: string;
   question: string;
-  ground_truth: string | null;
-  rag_eval: SingleAnswerEval;
-  vanilla_gpt_eval: SingleAnswerEval | null;
-  vanilla_gemini_eval: SingleAnswerEval | null;
-  rag_sources: Source[];
-  rag_advantage_vs_gpt: number | null;
-  rag_advantage_vs_gemini: number | null;
+  groundTruth: string | null;
+  sourceFilter: string | null;
+  ragAnswer: string;
+  ragAvgScore: number;
+  ragTotalScore: number;
+  gptAnswer: string | null;
+  gptAvgScore: number | null;
+  gptTotalScore: number | null;
+  geminiAnswer: string | null;
+  geminiAvgScore: number | null;
+  geminiTotalScore: number | null;
+  ragAdvantageVsGpt: number | null;
+  ragAdvantageVsGemini: number | null;
+  ragScores: CriterionScore[];
+  gptScores: CriterionScore[] | null;
+  geminiScores: CriterionScore[] | null;
+  ragSources: Source[];
 }
-
-const CRITERIA = [
-  "Factual Accuracy",
-  "Obligation Extraction",
-  "Deadline Accuracy",
-  "Hallucination Rate",
-  "Nuance Handling",
-];
 
 function ScoreBar({ score, max = 5 }: { score: number; max?: number }) {
   const pct = (score / max) * 100;
@@ -95,6 +93,7 @@ function ScoreTable({
   const gemMap = geminiScores
     ? Object.fromEntries(geminiScores.map((s) => [s.criterion, s]))
     : null;
+  const criteria = ragScores.map((s) => s.criterion);
 
   return (
     <div className="overflow-x-auto">
@@ -110,7 +109,7 @@ function ScoreTable({
           </tr>
         </thead>
         <tbody>
-          {CRITERIA.map((crit) => {
+          {criteria.map((crit) => {
             const ragS = ragMap[crit]?.score ?? 0;
             const gptS = gptMap?.[crit]?.score ?? 0;
             const gemS = gemMap?.[crit]?.score ?? 0;
@@ -164,7 +163,6 @@ function ReasoningPanel({
   gptScores: CriterionScore[] | null;
   geminiScores: CriterionScore[] | null;
 }) {
-  const [open, setOpen] = useState(false);
   const ragMap = Object.fromEntries(ragScores.map((s) => [s.criterion, s]));
   const gptMap = gptScores
     ? Object.fromEntries(gptScores.map((s) => [s.criterion, s]))
@@ -172,67 +170,57 @@ function ReasoningPanel({
   const gemMap = geminiScores
     ? Object.fromEntries(geminiScores.map((s) => [s.criterion, s]))
     : null;
-
+  const criteria = ragScores.map((s) => s.criterion);
   const cols = 1 + (gptMap ? 1 : 0) + (gemMap ? 1 : 0);
 
   return (
-    <div>
-      <button
-        onClick={() => setOpen(!open)}
-        className="text-sm text-zinc-400 hover:text-zinc-200"
-      >
-        {open ? "Hide" : "Show"} judge reasoning
-      </button>
-      {open && (
-        <div className="mt-3 space-y-3">
-          {CRITERIA.map((crit) => (
-            <div key={crit} className="rounded-lg bg-[#1a1a1a] p-3">
-              <p className="mb-1 text-sm font-medium text-zinc-300">{crit}</p>
-              <div className={`grid gap-2 md:grid-cols-${cols}`}>
-                <div>
-                  <p className="text-xs font-semibold text-emerald-400">RAG</p>
-                  <p className="text-xs text-zinc-400">
-                    {ragMap[crit]?.reasoning ?? "\u2014"}
-                  </p>
-                </div>
-                {gptMap && (
-                  <div>
-                    <p className="text-xs font-semibold text-orange-400">GPT</p>
-                    <p className="text-xs text-zinc-400">
-                      {gptMap[crit]?.reasoning ?? "\u2014"}
-                    </p>
-                  </div>
-                )}
-                {gemMap && (
-                  <div>
-                    <p className="text-xs font-semibold text-blue-400">Gemini</p>
-                    <p className="text-xs text-zinc-400">
-                      {gemMap[crit]?.reasoning ?? "\u2014"}
-                    </p>
-                  </div>
-                )}
-              </div>
+    <div className="space-y-3">
+      {criteria.map((crit) => (
+        <div key={crit} className="rounded-lg bg-[#1a1a1a] p-3">
+          <p className="mb-1 text-sm font-medium text-zinc-300">{crit}</p>
+          <div className={`grid gap-2 md:grid-cols-${cols}`}>
+            <div>
+              <p className="text-xs font-semibold text-emerald-400">RAG</p>
+              <p className="text-xs text-zinc-400">
+                {ragMap[crit]?.reasoning ?? "\u2014"}
+              </p>
             </div>
-          ))}
+            {gptMap && (
+              <div>
+                <p className="text-xs font-semibold text-orange-400">GPT</p>
+                <p className="text-xs text-zinc-400">
+                  {gptMap[crit]?.reasoning ?? "\u2014"}
+                </p>
+              </div>
+            )}
+            {gemMap && (
+              <div>
+                <p className="text-xs font-semibold text-blue-400">Gemini</p>
+                <p className="text-xs text-zinc-400">
+                  {gemMap[crit]?.reasoning ?? "\u2014"}
+                </p>
+              </div>
+            )}
+          </div>
         </div>
-      )}
+      ))}
     </div>
   );
 }
 
-function AnswerComparison({ result }: { result: QuestionEvalResult }) {
-  const hasGpt = result.vanilla_gpt_eval != null;
-  const hasGemini = result.vanilla_gemini_eval != null;
+function AnswerComparison({ run }: { run: EvalRun }) {
+  const hasGpt = run.gptAnswer != null;
+  const hasGemini = run.geminiAnswer != null;
 
   type AnswerTab = "rag" | "gpt" | "gemini";
   const [tab, setTab] = useState<AnswerTab>("rag");
 
-  const eval_ =
+  const answer =
     tab === "rag"
-      ? result.rag_eval
+      ? run.ragAnswer
       : tab === "gpt"
-        ? result.vanilla_gpt_eval
-        : result.vanilla_gemini_eval;
+        ? run.gptAnswer
+        : run.geminiAnswer;
 
   return (
     <div>
@@ -274,7 +262,7 @@ function AnswerComparison({ result }: { result: QuestionEvalResult }) {
       </div>
       <div className="rounded-lg bg-[#1a1a1a] p-4">
         <p className="whitespace-pre-wrap text-sm leading-relaxed text-zinc-200">
-          {eval_?.answer ?? "Not evaluated"}
+          {answer ?? "Not evaluated"}
         </p>
       </div>
     </div>
@@ -347,62 +335,33 @@ function AdvantageBadge({ value, label }: { value: number; label: string }) {
   );
 }
 
-export default function EvaluatePage() {
-  const [question, setQuestion] = useState("");
-  const [groundTruth, setGroundTruth] = useState("");
-  const [sourceFilter, setSourceFilter] = useState("");
-  const [baselines, setBaselines] = useState<string[]>(["gpt", "gemini"]);
-  const [loading, setLoading] = useState(false);
-  const [result, setResult] = useState<QuestionEvalResult | null>(null);
+export default function EvalDetailPage() {
+  const { id } = useParams<{ id: string }>();
+  const [run, setRun] = useState<EvalRun | null>(null);
+  const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  function toggleBaseline(b: string) {
-    setBaselines((prev) =>
-      prev.includes(b) ? prev.filter((x) => x !== b) : [...prev, b]
-    );
-  }
-
-  async function handleSubmit(e: React.FormEvent) {
-    e.preventDefault();
-    const q = question.trim();
-    if (!q || loading || baselines.length === 0) return;
-
-    setLoading(true);
-    setError(null);
-    setResult(null);
-
-    try {
-      const body: Record<string, unknown> = { question: q, baselines };
-      if (groundTruth.trim()) body.ground_truth = groundTruth.trim();
-      if (sourceFilter.trim()) body.source_filter = sourceFilter.trim();
-
-      const res = await fetch("/api/evaluate", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(body),
-      });
-
-      const data = await res.json();
-      if (!res.ok) {
-        setError(data.error || "Evaluation failed.");
-        return;
+  useEffect(() => {
+    async function load() {
+      try {
+        const res = await fetch(`/api/evaluate/${id}`);
+        const data = await res.json();
+        if (!res.ok) {
+          setError(data.error || "Failed to load evaluation.");
+          return;
+        }
+        setRun(data.run);
+      } catch {
+        setError("Could not load evaluation.");
+      } finally {
+        setLoading(false);
       }
-      setResult(data.result);
-    } catch {
-      setError("Could not connect to evaluation service.");
-    } finally {
-      setLoading(false);
     }
-  }
+    load();
+  }, [id]);
 
-  const hasGpt = result?.vanilla_gpt_eval != null;
-  const hasGemini = result?.vanilla_gemini_eval != null;
-
-  const baselinesLabel = [
-    "RAG",
-    ...(baselines.includes("gpt") ? ["GPT"] : []),
-    ...(baselines.includes("gemini") ? ["Gemini"] : []),
-  ].join(" + ");
+  const hasGpt = run?.gptAnswer != null;
+  const hasGemini = run?.geminiAnswer != null;
 
   return (
     <div className="flex min-h-screen flex-col bg-[#212121] text-white">
@@ -415,7 +374,12 @@ export default function EvaluatePage() {
           >
             Chat
           </Link>
-          <span className="text-sm font-medium text-white">Evaluate</span>
+          <Link
+            href="/evaluate"
+            className="text-sm text-zinc-400 hover:text-zinc-200"
+          >
+            Evaluate
+          </Link>
           <Link
             href="/admin"
             className="text-sm text-zinc-400 hover:text-zinc-200"
@@ -426,188 +390,119 @@ export default function EvaluatePage() {
       </nav>
 
       <div className="mx-auto w-full max-w-5xl flex-1 px-4 py-8">
-        {/* Header */}
-        <div className="mb-8">
-          <h1 className="text-2xl font-semibold">RAG Evaluation</h1>
-          <p className="mt-1 text-sm text-zinc-400">
-            Compare RAG pipeline answers against vanilla LLMs — scored by GPT-4o judge on 5 criteria.
-          </p>
-        </div>
+        {/* Back link */}
+        <Link
+          href="/admin"
+          className="mb-6 inline-flex items-center gap-1 text-sm text-zinc-400 hover:text-zinc-200"
+        >
+          &larr; Back to Reports
+        </Link>
 
-        {/* Form */}
-        <form onSubmit={handleSubmit} className="mb-8 space-y-4">
-          <div>
-            <label className="mb-1 block text-sm font-medium text-zinc-300">
-              Question
-            </label>
-            <textarea
-              value={question}
-              onChange={(e) => setQuestion(e.target.value)}
-              placeholder="e.g. What are the latest RBI NBFC guidelines?"
-              rows={2}
-              className="w-full rounded-xl bg-[#2f2f2f] px-4 py-3 text-white placeholder-zinc-500 outline-none focus:ring-1 focus:ring-zinc-600"
-            />
-          </div>
-
-          <div className="grid gap-4 md:grid-cols-2">
-            <div>
-              <label className="mb-1 block text-sm font-medium text-zinc-300">
-                Ground Truth{" "}
-                <span className="text-zinc-500">(optional)</span>
-              </label>
-              <textarea
-                value={groundTruth}
-                onChange={(e) => setGroundTruth(e.target.value)}
-                placeholder="Reference answer for comparison..."
-                rows={2}
-                className="w-full rounded-xl bg-[#2f2f2f] px-4 py-3 text-sm text-white placeholder-zinc-500 outline-none focus:ring-1 focus:ring-zinc-600"
-              />
-            </div>
-            <div>
-              <label className="mb-1 block text-sm font-medium text-zinc-300">
-                Source Filter{" "}
-                <span className="text-zinc-500">(optional)</span>
-              </label>
-              <input
-                value={sourceFilter}
-                onChange={(e) => setSourceFilter(e.target.value)}
-                placeholder="e.g. RBI, SEBI, IRDAI, MCA"
-                className="w-full rounded-xl bg-[#2f2f2f] px-4 py-3 text-sm text-white placeholder-zinc-500 outline-none focus:ring-1 focus:ring-zinc-600"
-              />
-            </div>
-          </div>
-
-          {/* Baselines toggle */}
-          <div>
-            <label className="mb-2 block text-sm font-medium text-zinc-300">
-              Compare against
-            </label>
-            <div className="flex gap-4">
-              <label className="flex items-center gap-2 rounded-xl bg-[#2f2f2f] px-4 py-2.5">
-                <input
-                  type="checkbox"
-                  checked={baselines.includes("gpt")}
-                  onChange={() => toggleBaseline("gpt")}
-                  className="h-4 w-4 rounded"
-                />
-                <span className="text-sm text-orange-400 font-medium">GPT</span>
-              </label>
-              <label className="flex items-center gap-2 rounded-xl bg-[#2f2f2f] px-4 py-2.5">
-                <input
-                  type="checkbox"
-                  checked={baselines.includes("gemini")}
-                  onChange={() => toggleBaseline("gemini")}
-                  className="h-4 w-4 rounded"
-                />
-                <span className="text-sm text-blue-400 font-medium">Gemini</span>
-              </label>
-            </div>
-          </div>
-
-          <button
-            type="submit"
-            disabled={loading || !question.trim() || baselines.length === 0}
-            className="rounded-xl bg-white px-6 py-2.5 text-sm font-semibold text-black transition-colors hover:bg-zinc-200 disabled:opacity-30"
-          >
-            {loading ? "Evaluating..." : "Run Evaluation"}
-          </button>
-        </form>
-
-        {/* Loading */}
         {loading && (
-          <div className="flex flex-col items-center gap-3 py-12">
+          <div className="flex justify-center py-12">
             <div className="flex items-center gap-1">
               <span className="h-2 w-2 animate-bounce rounded-full bg-zinc-500 [animation-delay:0ms]" />
               <span className="h-2 w-2 animate-bounce rounded-full bg-zinc-500 [animation-delay:150ms]" />
               <span className="h-2 w-2 animate-bounce rounded-full bg-zinc-500 [animation-delay:300ms]" />
             </div>
-            <p className="text-sm text-zinc-400">
-              Running {baselinesLabel} + judge evaluation...
-            </p>
           </div>
         )}
 
-        {/* Error */}
         {error && (
-          <div className="mb-6 rounded-xl bg-red-900/30 px-4 py-3 text-sm text-red-300">
+          <div className="rounded-xl bg-red-900/30 px-4 py-3 text-sm text-red-300">
             {error}
           </div>
         )}
 
-        {/* Results */}
-        {result && (
+        {run && (
           <div className="space-y-8">
-            {/* Summary header */}
+            {/* Header */}
+            <div>
+              <h1 className="text-2xl font-semibold">Evaluation Detail</h1>
+              <p className="mt-1 text-sm text-zinc-400">
+                {new Date(run.createdAt).toLocaleString()}
+                {run.sourceFilter && ` · Source: ${run.sourceFilter}`}
+              </p>
+            </div>
+
+            {/* Summary */}
             <div className="flex flex-wrap items-center gap-4 rounded-xl bg-[#2f2f2f] p-5">
               <div className="min-w-0 flex-1">
                 <p className="text-sm text-zinc-400">Question</p>
-                <p className="mt-0.5 font-medium">{result.question}</p>
+                <p className="mt-0.5 font-medium">{run.question}</p>
+                {run.groundTruth && (
+                  <>
+                    <p className="mt-3 text-sm text-zinc-400">Ground Truth</p>
+                    <p className="mt-0.5 text-sm text-zinc-300">
+                      {run.groundTruth}
+                    </p>
+                  </>
+                )}
               </div>
               <div className="flex gap-5 text-center">
                 <div>
                   <p className="text-2xl font-bold text-emerald-400">
-                    {result.rag_eval.average_score.toFixed(1)}
+                    {run.ragAvgScore.toFixed(1)}
                   </p>
                   <p className="text-xs text-zinc-400">RAG</p>
                 </div>
-                {hasGpt && (
+                {hasGpt && run.gptAvgScore != null && (
                   <div>
                     <p className="text-2xl font-bold text-orange-400">
-                      {result.vanilla_gpt_eval!.average_score.toFixed(1)}
+                      {run.gptAvgScore.toFixed(1)}
                     </p>
                     <p className="text-xs text-zinc-400">GPT</p>
                   </div>
                 )}
-                {hasGemini && (
+                {hasGemini && run.geminiAvgScore != null && (
                   <div>
                     <p className="text-2xl font-bold text-blue-400">
-                      {result.vanilla_gemini_eval!.average_score.toFixed(1)}
+                      {run.geminiAvgScore.toFixed(1)}
                     </p>
                     <p className="text-xs text-zinc-400">Gemini</p>
                   </div>
                 )}
-                {hasGpt && result.rag_advantage_vs_gpt != null && (
+                {run.ragAdvantageVsGpt != null && (
                   <div className="border-l border-zinc-700 pl-5">
-                    <AdvantageBadge value={result.rag_advantage_vs_gpt} label="vs GPT" />
+                    <AdvantageBadge value={run.ragAdvantageVsGpt} label="vs GPT" />
                   </div>
                 )}
-                {hasGemini && result.rag_advantage_vs_gemini != null && (
-                  <AdvantageBadge value={result.rag_advantage_vs_gemini} label="vs Gemini" />
+                {run.ragAdvantageVsGemini != null && (
+                  <AdvantageBadge value={run.ragAdvantageVsGemini} label="vs Gemini" />
                 )}
               </div>
             </div>
 
             {/* Score table */}
             <div className="rounded-xl bg-[#2f2f2f] p-5">
-              <h2 className="mb-4 text-lg font-semibold">
-                Score Comparison
-              </h2>
+              <h2 className="mb-4 text-lg font-semibold">Score Comparison</h2>
               <ScoreTable
-                ragScores={result.rag_eval.scores}
-                gptScores={result.vanilla_gpt_eval?.scores ?? null}
-                geminiScores={result.vanilla_gemini_eval?.scores ?? null}
+                ragScores={run.ragScores}
+                gptScores={run.gptScores}
+                geminiScores={run.geminiScores}
               />
             </div>
 
             {/* Judge reasoning */}
             <div className="rounded-xl bg-[#2f2f2f] p-5">
+              <h2 className="mb-4 text-lg font-semibold">Judge Reasoning</h2>
               <ReasoningPanel
-                ragScores={result.rag_eval.scores}
-                gptScores={result.vanilla_gpt_eval?.scores ?? null}
-                geminiScores={result.vanilla_gemini_eval?.scores ?? null}
+                ragScores={run.ragScores}
+                gptScores={run.gptScores}
+                geminiScores={run.geminiScores}
               />
             </div>
 
             {/* Answers */}
             <div className="rounded-xl bg-[#2f2f2f] p-5">
               <h2 className="mb-4 text-lg font-semibold">Answers</h2>
-              <AnswerComparison result={result} />
+              <AnswerComparison run={run} />
             </div>
 
             {/* Sources */}
-            {result.rag_sources.length > 0 && (
+            {run.ragSources.length > 0 && (
               <div className="rounded-xl bg-[#2f2f2f] p-5">
-                <SourcesPanel sources={result.rag_sources} />
+                <SourcesPanel sources={run.ragSources} />
               </div>
             )}
           </div>

@@ -20,12 +20,17 @@ interface EvalRunRecord {
   ragAnswer: string;
   ragAvgScore: number;
   ragTotalScore: number;
-  vanillaAnswer: string;
-  vanillaAvgScore: number;
-  vanillaTotalScore: number;
-  ragAdvantage: number;
+  gptAnswer: string | null;
+  gptAvgScore: number | null;
+  gptTotalScore: number | null;
+  geminiAnswer: string | null;
+  geminiAvgScore: number | null;
+  geminiTotalScore: number | null;
+  ragAdvantageVsGpt: number | null;
+  ragAdvantageVsGemini: number | null;
   ragScores: CriterionScore[];
-  vanillaScores: CriterionScore[];
+  gptScores: CriterionScore[] | null;
+  geminiScores: CriterionScore[] | null;
   ragSources: unknown[];
 }
 
@@ -309,7 +314,7 @@ function IndexingTab() {
               <div key={label as string} className="rounded-lg bg-[#1a1a1a] p-3">
                 <p className="text-xs text-zinc-500">{label as string}</p>
                 <p className="text-lg font-semibold text-white">
-                  {String(value ?? "—")}
+                  {String(value ?? "\u2014")}
                 </p>
               </div>
             ))}
@@ -328,21 +333,28 @@ function EvaluateTab() {
   const [question, setQuestion] = useState("");
   const [groundTruth, setGroundTruth] = useState("");
   const [sourceFilter, setSourceFilter] = useState("");
+  const [baselines, setBaselines] = useState<string[]>(["gpt", "gemini"]);
   const [loading, setLoading] = useState(false);
   const [result, setResult] = useState<Record<string, unknown> | null>(null);
   const [error, setError] = useState<string | null>(null);
 
+  function toggleBaseline(b: string) {
+    setBaselines((prev) =>
+      prev.includes(b) ? prev.filter((x) => x !== b) : [...prev, b]
+    );
+  }
+
   async function handleEvaluate(e: React.FormEvent) {
     e.preventDefault();
     const q = question.trim();
-    if (!q || loading) return;
+    if (!q || loading || baselines.length === 0) return;
 
     setLoading(true);
     setError(null);
     setResult(null);
 
     try {
-      const body: Record<string, string> = { question: q };
+      const body: Record<string, unknown> = { question: q, baselines };
       if (groundTruth.trim()) body.ground_truth = groundTruth.trim();
       if (sourceFilter.trim()) body.source_filter = sourceFilter.trim();
 
@@ -369,9 +381,20 @@ function EvaluateTab() {
   const r = result as {
     question: string;
     rag_eval: { average_score: number; scores: CriterionScore[] };
-    vanilla_eval: { average_score: number; scores: CriterionScore[] };
-    rag_advantage: number;
+    vanilla_gpt_eval: { average_score: number; scores: CriterionScore[] } | null;
+    vanilla_gemini_eval: { average_score: number; scores: CriterionScore[] } | null;
+    rag_advantage_vs_gpt: number | null;
+    rag_advantage_vs_gemini: number | null;
   } | null;
+
+  const hasGpt = r?.vanilla_gpt_eval != null;
+  const hasGemini = r?.vanilla_gemini_eval != null;
+
+  const baselinesLabel = [
+    "RAG",
+    ...(baselines.includes("gpt") ? ["GPT"] : []),
+    ...(baselines.includes("gemini") ? ["Gemini"] : []),
+  ].join(" + ");
 
   return (
     <div className="space-y-6">
@@ -415,9 +438,36 @@ function EvaluateTab() {
           </div>
         </div>
 
+        {/* Baselines toggle */}
+        <div>
+          <label className="mb-2 block text-sm font-medium text-zinc-300">
+            Compare against
+          </label>
+          <div className="flex gap-4">
+            <label className="flex items-center gap-2 rounded-xl bg-[#2f2f2f] px-4 py-2.5">
+              <input
+                type="checkbox"
+                checked={baselines.includes("gpt")}
+                onChange={() => toggleBaseline("gpt")}
+                className="h-4 w-4 rounded"
+              />
+              <span className="text-sm text-orange-400 font-medium">GPT</span>
+            </label>
+            <label className="flex items-center gap-2 rounded-xl bg-[#2f2f2f] px-4 py-2.5">
+              <input
+                type="checkbox"
+                checked={baselines.includes("gemini")}
+                onChange={() => toggleBaseline("gemini")}
+                className="h-4 w-4 rounded"
+              />
+              <span className="text-sm text-blue-400 font-medium">Gemini</span>
+            </label>
+          </div>
+        </div>
+
         <button
           type="submit"
-          disabled={loading || !question.trim()}
+          disabled={loading || !question.trim() || baselines.length === 0}
           className="rounded-xl bg-white px-6 py-2.5 text-sm font-semibold text-black transition-colors hover:bg-zinc-200 disabled:opacity-30"
         >
           {loading ? "Evaluating..." : "Run & Save"}
@@ -428,7 +478,7 @@ function EvaluateTab() {
         <div className="flex flex-col items-center gap-3 py-8">
           <LoadingDots />
           <p className="text-sm text-zinc-400">
-            Running RAG + vanilla LLM + judge evaluation...
+            Running {baselinesLabel} + judge evaluation...
           </p>
         </div>
       )}
@@ -438,38 +488,67 @@ function EvaluateTab() {
       {r && (
         <div className="rounded-xl bg-[#2f2f2f] p-5">
           <div className="mb-4 flex flex-wrap items-center gap-4">
-            <div className="flex-1">
+            <div className="min-w-0 flex-1">
               <p className="text-sm text-zinc-400">Question</p>
               <p className="mt-0.5 font-medium">{r.question}</p>
             </div>
-            <div className="flex gap-6 text-center">
+            <div className="flex gap-5 text-center">
               <div>
                 <p className="text-2xl font-bold text-emerald-400">
                   {r.rag_eval.average_score.toFixed(1)}
                 </p>
                 <p className="text-xs text-zinc-400">RAG</p>
               </div>
-              <div>
-                <p className="text-2xl font-bold text-orange-400">
-                  {r.vanilla_eval.average_score.toFixed(1)}
-                </p>
-                <p className="text-xs text-zinc-400">Vanilla</p>
-              </div>
-              <div>
-                <p
-                  className={`text-2xl font-bold ${
-                    r.rag_advantage > 0
-                      ? "text-emerald-400"
-                      : r.rag_advantage < 0
-                        ? "text-red-400"
-                        : "text-zinc-400"
-                  }`}
-                >
-                  {r.rag_advantage > 0 ? "+" : ""}
-                  {r.rag_advantage.toFixed(1)}
-                </p>
-                <p className="text-xs text-zinc-400">Advantage</p>
-              </div>
+              {hasGpt && (
+                <div>
+                  <p className="text-2xl font-bold text-orange-400">
+                    {r.vanilla_gpt_eval!.average_score.toFixed(1)}
+                  </p>
+                  <p className="text-xs text-zinc-400">GPT</p>
+                </div>
+              )}
+              {hasGemini && (
+                <div>
+                  <p className="text-2xl font-bold text-blue-400">
+                    {r.vanilla_gemini_eval!.average_score.toFixed(1)}
+                  </p>
+                  <p className="text-xs text-zinc-400">Gemini</p>
+                </div>
+              )}
+              {r.rag_advantage_vs_gpt != null && (
+                <div className="border-l border-zinc-700 pl-5">
+                  <p
+                    className={`text-2xl font-bold ${
+                      r.rag_advantage_vs_gpt > 0
+                        ? "text-emerald-400"
+                        : r.rag_advantage_vs_gpt < 0
+                          ? "text-red-400"
+                          : "text-zinc-400"
+                    }`}
+                  >
+                    {r.rag_advantage_vs_gpt > 0 ? "+" : ""}
+                    {r.rag_advantage_vs_gpt.toFixed(1)}
+                  </p>
+                  <p className="text-xs text-zinc-400">vs GPT</p>
+                </div>
+              )}
+              {r.rag_advantage_vs_gemini != null && (
+                <div>
+                  <p
+                    className={`text-2xl font-bold ${
+                      r.rag_advantage_vs_gemini > 0
+                        ? "text-emerald-400"
+                        : r.rag_advantage_vs_gemini < 0
+                          ? "text-red-400"
+                          : "text-zinc-400"
+                    }`}
+                  >
+                    {r.rag_advantage_vs_gemini > 0 ? "+" : ""}
+                    {r.rag_advantage_vs_gemini.toFixed(1)}
+                  </p>
+                  <p className="text-xs text-zinc-400">vs Gemini</p>
+                </div>
+              )}
             </div>
           </div>
 
@@ -477,36 +556,65 @@ function EvaluateTab() {
             <thead>
               <tr className="border-b border-zinc-700 text-left text-xs uppercase tracking-wide text-zinc-400">
                 <th className="py-2 pr-4">Criterion</th>
-                <th className="px-4 py-2 text-center">RAG</th>
-                <th className="px-4 py-2 text-center">Vanilla</th>
-                <th className="py-2 pl-4 text-center">Delta</th>
+                <th className="px-3 py-2 text-center">RAG</th>
+                {hasGpt && <th className="px-3 py-2 text-center">GPT</th>}
+                {hasGemini && <th className="px-3 py-2 text-center">Gemini</th>}
+                {hasGpt && <th className="px-2 py-2 text-center">vs GPT</th>}
+                {hasGemini && <th className="py-2 pl-2 text-center">vs Gemini</th>}
               </tr>
             </thead>
             <tbody>
               {r.rag_eval.scores.map((rs: CriterionScore, i: number) => {
-                const vs = r.vanilla_eval.scores[i];
-                const delta = rs.score - (vs?.score ?? 0);
+                const gs = r.vanilla_gpt_eval?.scores[i];
+                const ges = r.vanilla_gemini_eval?.scores[i];
+                const dGpt = rs.score - (gs?.score ?? 0);
+                const dGem = rs.score - (ges?.score ?? 0);
                 return (
                   <tr key={rs.criterion} className="border-b border-zinc-800">
                     <td className="py-2 pr-4 text-zinc-300">{rs.criterion}</td>
-                    <td className="px-4 py-2 text-center">{rs.score}</td>
-                    <td className="px-4 py-2 text-center">
-                      {vs?.score ?? "—"}
-                    </td>
-                    <td className="py-2 pl-4 text-center">
-                      <span
-                        className={`font-semibold ${
-                          delta > 0
-                            ? "text-emerald-400"
-                            : delta < 0
-                              ? "text-red-400"
-                              : "text-zinc-500"
-                        }`}
-                      >
-                        {delta > 0 ? "+" : ""}
-                        {delta}
-                      </span>
-                    </td>
+                    <td className="px-3 py-2 text-center">{rs.score}</td>
+                    {hasGpt && (
+                      <td className="px-3 py-2 text-center">
+                        {gs?.score ?? "\u2014"}
+                      </td>
+                    )}
+                    {hasGemini && (
+                      <td className="px-3 py-2 text-center">
+                        {ges?.score ?? "\u2014"}
+                      </td>
+                    )}
+                    {hasGpt && (
+                      <td className="px-2 py-2 text-center">
+                        <span
+                          className={`font-semibold ${
+                            dGpt > 0
+                              ? "text-emerald-400"
+                              : dGpt < 0
+                                ? "text-red-400"
+                                : "text-zinc-500"
+                          }`}
+                        >
+                          {dGpt > 0 ? "+" : ""}
+                          {dGpt}
+                        </span>
+                      </td>
+                    )}
+                    {hasGemini && (
+                      <td className="py-2 pl-2 text-center">
+                        <span
+                          className={`font-semibold ${
+                            dGem > 0
+                              ? "text-emerald-400"
+                              : dGem < 0
+                                ? "text-red-400"
+                                : "text-zinc-500"
+                          }`}
+                        >
+                          {dGem > 0 ? "+" : ""}
+                          {dGem}
+                        </span>
+                      </td>
+                    )}
                   </tr>
                 );
               })}
@@ -566,32 +674,64 @@ function ReportsTab() {
     );
   }
 
-  // Summary stats
+  // Summary stats — null-safe: only average over runs that have each baseline
   const totalEvals = runs.length;
   const avgRag = runs.reduce((s, r) => s + r.ragAvgScore, 0) / totalEvals;
-  const avgVanilla =
-    runs.reduce((s, r) => s + r.vanillaAvgScore, 0) / totalEvals;
-  const avgAdvantage =
-    runs.reduce((s, r) => s + r.ragAdvantage, 0) / totalEvals;
+
+  const gptRuns = runs.filter((r) => r.gptAvgScore != null);
+  const avgGpt = gptRuns.length > 0
+    ? gptRuns.reduce((s, r) => s + r.gptAvgScore!, 0) / gptRuns.length
+    : null;
+
+  const geminiRuns = runs.filter((r) => r.geminiAvgScore != null);
+  const avgGemini = geminiRuns.length > 0
+    ? geminiRuns.reduce((s, r) => s + r.geminiAvgScore!, 0) / geminiRuns.length
+    : null;
+
+  const gptAdvRuns = runs.filter((r) => r.ragAdvantageVsGpt != null);
+  const avgAdvVsGpt = gptAdvRuns.length > 0
+    ? gptAdvRuns.reduce((s, r) => s + r.ragAdvantageVsGpt!, 0) / gptAdvRuns.length
+    : null;
+
+  const geminiAdvRuns = runs.filter((r) => r.ragAdvantageVsGemini != null);
+  const avgAdvVsGemini = geminiAdvRuns.length > 0
+    ? geminiAdvRuns.reduce((s, r) => s + r.ragAdvantageVsGemini!, 0) / geminiAdvRuns.length
+    : null;
+
+  const summaryCards: [string, string, string][] = [
+    ["Total Evals", totalEvals.toString(), "text-white"],
+    ["Avg RAG", avgRag.toFixed(2), "text-emerald-400"],
+  ];
+  if (avgGpt != null) {
+    summaryCards.push(["Avg GPT", avgGpt.toFixed(2), "text-orange-400"]);
+  }
+  if (avgGemini != null) {
+    summaryCards.push(["Avg Gemini", avgGemini.toFixed(2), "text-blue-400"]);
+  }
+  if (avgAdvVsGpt != null) {
+    summaryCards.push([
+      "Avg vs GPT",
+      (avgAdvVsGpt > 0 ? "+" : "") + avgAdvVsGpt.toFixed(2),
+      avgAdvVsGpt > 0 ? "text-emerald-400" : avgAdvVsGpt < 0 ? "text-red-400" : "text-zinc-400",
+    ]);
+  }
+  if (avgAdvVsGemini != null) {
+    summaryCards.push([
+      "Avg vs Gemini",
+      (avgAdvVsGemini > 0 ? "+" : "") + avgAdvVsGemini.toFixed(2),
+      avgAdvVsGemini > 0 ? "text-emerald-400" : avgAdvVsGemini < 0 ? "text-red-400" : "text-zinc-400",
+    ]);
+  }
+
+  // Determine which columns the history table needs
+  const anyGpt = runs.some((r) => r.gptAvgScore != null);
+  const anyGemini = runs.some((r) => r.geminiAvgScore != null);
 
   return (
     <div className="space-y-6">
       {/* Summary cards */}
-      <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
-        {[
-          ["Total Evals", totalEvals.toString(), "text-white"],
-          ["Avg RAG Score", avgRag.toFixed(2), "text-emerald-400"],
-          ["Avg Vanilla Score", avgVanilla.toFixed(2), "text-orange-400"],
-          [
-            "Avg Advantage",
-            (avgAdvantage > 0 ? "+" : "") + avgAdvantage.toFixed(2),
-            avgAdvantage > 0
-              ? "text-emerald-400"
-              : avgAdvantage < 0
-                ? "text-red-400"
-                : "text-zinc-400",
-          ],
-        ].map(([label, value, color]) => (
+      <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+        {summaryCards.map(([label, value, color]) => (
           <div key={label} className="rounded-xl bg-[#2f2f2f] p-4">
             <p className="text-xs text-zinc-500">{label}</p>
             <p className={`text-2xl font-bold ${color}`}>{value}</p>
@@ -606,9 +746,11 @@ function ReportsTab() {
             <tr className="border-b border-zinc-700 text-left text-xs uppercase tracking-wide text-zinc-400">
               <th className="px-4 py-3">Date</th>
               <th className="px-4 py-3">Question</th>
-              <th className="px-4 py-3 text-center">RAG</th>
-              <th className="px-4 py-3 text-center">Vanilla</th>
-              <th className="px-4 py-3 text-center">Advantage</th>
+              <th className="px-3 py-3 text-center">RAG</th>
+              {anyGpt && <th className="px-3 py-3 text-center">GPT</th>}
+              {anyGemini && <th className="px-3 py-3 text-center">Gemini</th>}
+              {anyGpt && <th className="px-2 py-3 text-center">vs GPT</th>}
+              {anyGemini && <th className="py-3 pl-2 text-center">vs Gemini</th>}
             </tr>
           </thead>
           <tbody>
@@ -627,31 +769,64 @@ function ReportsTab() {
                   <td className="max-w-xs truncate px-4 py-3 text-zinc-200">
                     {run.question}
                   </td>
-                  <td className="px-4 py-3 text-center font-semibold text-emerald-400">
+                  <td className="px-3 py-3 text-center font-semibold text-emerald-400">
                     {run.ragAvgScore.toFixed(1)}
                   </td>
-                  <td className="px-4 py-3 text-center font-semibold text-orange-400">
-                    {run.vanillaAvgScore.toFixed(1)}
-                  </td>
-                  <td className="px-4 py-3 text-center">
-                    <span
-                      className={`font-semibold ${
-                        run.ragAdvantage > 0
-                          ? "text-emerald-400"
-                          : run.ragAdvantage < 0
-                            ? "text-red-400"
-                            : "text-zinc-500"
-                      }`}
-                    >
-                      {run.ragAdvantage > 0 ? "+" : ""}
-                      {run.ragAdvantage.toFixed(1)}
-                    </span>
-                  </td>
+                  {anyGpt && (
+                    <td className="px-3 py-3 text-center font-semibold text-orange-400">
+                      {run.gptAvgScore != null ? run.gptAvgScore.toFixed(1) : "\u2014"}
+                    </td>
+                  )}
+                  {anyGemini && (
+                    <td className="px-3 py-3 text-center font-semibold text-blue-400">
+                      {run.geminiAvgScore != null ? run.geminiAvgScore.toFixed(1) : "\u2014"}
+                    </td>
+                  )}
+                  {anyGpt && (
+                    <td className="px-2 py-3 text-center">
+                      {run.ragAdvantageVsGpt != null ? (
+                        <span
+                          className={`font-semibold ${
+                            run.ragAdvantageVsGpt > 0
+                              ? "text-emerald-400"
+                              : run.ragAdvantageVsGpt < 0
+                                ? "text-red-400"
+                                : "text-zinc-500"
+                          }`}
+                        >
+                          {run.ragAdvantageVsGpt > 0 ? "+" : ""}
+                          {run.ragAdvantageVsGpt.toFixed(1)}
+                        </span>
+                      ) : (
+                        <span className="text-zinc-600">{"\u2014"}</span>
+                      )}
+                    </td>
+                  )}
+                  {anyGemini && (
+                    <td className="py-3 pl-2 text-center">
+                      {run.ragAdvantageVsGemini != null ? (
+                        <span
+                          className={`font-semibold ${
+                            run.ragAdvantageVsGemini > 0
+                              ? "text-emerald-400"
+                              : run.ragAdvantageVsGemini < 0
+                                ? "text-red-400"
+                                : "text-zinc-500"
+                          }`}
+                        >
+                          {run.ragAdvantageVsGemini > 0 ? "+" : ""}
+                          {run.ragAdvantageVsGemini.toFixed(1)}
+                        </span>
+                      ) : (
+                        <span className="text-zinc-600">{"\u2014"}</span>
+                      )}
+                    </td>
+                  )}
                 </tr>
 
                 {expanded === run.id && (
                   <tr key={`${run.id}-detail`} className="border-b border-zinc-800">
-                    <td colSpan={5} className="px-4 py-4">
+                    <td colSpan={3 + (anyGpt ? 2 : 0) + (anyGemini ? 2 : 0)} className="px-4 py-4">
                       <div className="space-y-3">
                         <p className="text-xs text-zinc-500">
                           Per-Criterion Scores
@@ -659,9 +834,12 @@ function ReportsTab() {
                         <div className="grid gap-2 md:grid-cols-2">
                           {(run.ragScores as CriterionScore[]).map(
                             (rs, i) => {
-                              const vs = (
-                                run.vanillaScores as CriterionScore[]
-                              )[i];
+                              const gs = run.gptScores
+                                ? (run.gptScores as CriterionScore[])[i]
+                                : null;
+                              const ges = run.geminiScores
+                                ? (run.geminiScores as CriterionScore[])[i]
+                                : null;
                               return (
                                 <div
                                   key={rs.criterion}
@@ -670,13 +848,20 @@ function ReportsTab() {
                                   <span className="text-sm text-zinc-300">
                                     {rs.criterion}
                                   </span>
-                                  <div className="flex gap-4 text-sm">
+                                  <div className="flex gap-3 text-sm">
                                     <span className="text-emerald-400">
                                       RAG: {rs.score}
                                     </span>
-                                    <span className="text-orange-400">
-                                      Van: {vs?.score ?? "—"}
-                                    </span>
+                                    {gs && (
+                                      <span className="text-orange-400">
+                                        GPT: {gs.score}
+                                      </span>
+                                    )}
+                                    {ges && (
+                                      <span className="text-blue-400">
+                                        Gem: {ges.score}
+                                      </span>
+                                    )}
                                   </div>
                                 </div>
                               );
@@ -688,6 +873,12 @@ function ReportsTab() {
                             Source filter: {run.sourceFilter}
                           </p>
                         )}
+                        <Link
+                          href={`/evaluate/${run.id}`}
+                          className="inline-block rounded-lg bg-zinc-700 px-3 py-1.5 text-xs font-medium text-zinc-200 transition-colors hover:bg-zinc-600"
+                        >
+                          View full details &rarr;
+                        </Link>
                       </div>
                     </td>
                   </tr>
@@ -717,7 +908,7 @@ export default function AdminPage() {
     <div className="flex min-h-screen flex-col bg-[#212121] text-white">
       {/* Nav */}
       <nav className="border-b border-zinc-800 px-4 py-3">
-        <div className="mx-auto flex max-w-4xl items-center gap-6">
+        <div className="mx-auto flex max-w-5xl items-center gap-6">
           <Link
             href="/"
             className="text-sm text-zinc-400 hover:text-zinc-200"
@@ -734,7 +925,7 @@ export default function AdminPage() {
         </div>
       </nav>
 
-      <div className="mx-auto w-full max-w-4xl flex-1 px-4 py-8">
+      <div className="mx-auto w-full max-w-5xl flex-1 px-4 py-8">
         {/* Header */}
         <div className="mb-8">
           <h1 className="text-2xl font-semibold">Admin Dashboard</h1>
