@@ -2,6 +2,7 @@
 
 import { useState, useRef, useEffect } from "react";
 import Link from "next/link";
+import Markdown from "@/components/Markdown";
 
 interface Source {
   title: string;
@@ -51,23 +52,72 @@ export default function Home() {
       const res = await fetch("/api/chat", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ question: question }),
+        body: JSON.stringify({ question }),
       });
 
-      const data = await res.json();
+      if (!res.ok || !res.body) {
+        throw new Error("Bad response");
+      }
+
+      // Add an empty assistant message that we'll stream into
       setMessages((prev) => [
         ...prev,
-        {
-          role: "assistant",
-          content: data.answer ?? "No response received.",
-          sources: data.sources ?? [],
-        },
+        { role: "assistant", content: "", sources: [] },
       ]);
+      setLoading(false);
+
+      const reader = res.body.getReader();
+      const decoder = new TextDecoder();
+      let buffer = "";
+
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+
+        buffer += decoder.decode(value, { stream: true });
+        const lines = buffer.split("\n\n");
+        buffer = lines.pop() ?? "";
+
+        for (const line of lines) {
+          const match = line.match(/^data:\s*(.+)$/m);
+          if (!match) continue;
+
+          const event = JSON.parse(match[1]);
+
+          if (event.type === "sources") {
+            setMessages((prev) => {
+              const updated = [...prev];
+              const last = updated[updated.length - 1];
+              updated[updated.length - 1] = {
+                ...last,
+                sources: event.data.sources ?? [],
+              };
+              return updated;
+            });
+          } else if (event.type === "token") {
+            setMessages((prev) => {
+              const updated = [...prev];
+              const last = updated[updated.length - 1];
+              updated[updated.length - 1] = {
+                ...last,
+                content: last.content + event.data,
+              };
+              return updated;
+            });
+          }
+          // "done" event — nothing extra needed
+        }
+      }
     } catch {
-      setMessages((prev) => [
-        ...prev,
-        { role: "assistant", content: "Error connecting to RAG service." },
-      ]);
+      setMessages((prev) => {
+        const last = prev[prev.length - 1];
+        // If we already started streaming, keep what we have
+        if (last?.role === "assistant" && last.content) return prev;
+        return [
+          ...prev,
+          { role: "assistant", content: "Error connecting to RAG service." },
+        ];
+      });
     } finally {
       setLoading(false);
     }
@@ -123,9 +173,13 @@ export default function Home() {
                     : "text-zinc-100"
                 }`}
               >
-                <p className="whitespace-pre-wrap leading-relaxed">
-                  {msg.content}
-                </p>
+                {msg.role === "assistant" ? (
+                  <Markdown content={msg.content} />
+                ) : (
+                  <p className="whitespace-pre-wrap leading-relaxed">
+                    {msg.content}
+                  </p>
+                )}
                 {msg.sources && msg.sources.length > 0 && (
                   <div className="mt-4 border-t border-zinc-700 pt-3">
                     <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-zinc-400">

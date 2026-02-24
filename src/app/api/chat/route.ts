@@ -6,28 +6,34 @@ export async function POST(req: NextRequest) {
   const { question } = await req.json();
 
   try {
-    const res = await fetch(`${RAG_URL}/ask`, {
+    const res = await fetch(`${RAG_URL}/ask/stream`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ question }),
     });
 
-    if (!res.ok) {
+    if (!res.ok || !res.body) {
       return NextResponse.json(
         { answer: "RAG service returned an error." },
         { status: res.status }
       );
     }
 
-    const data = await res.json();
-
-    const answer = data.answer ?? data.response ?? data.result ?? JSON.stringify(data);
-    const sources = data.sources ?? [];
-
-    return NextResponse.json({ answer, sources });
+    return new Response(res.body, {
+      headers: {
+        "Content-Type": "text/event-stream",
+        "Cache-Control": "no-cache",
+        Connection: "keep-alive",
+      },
+    });
   } catch {
     return NextResponse.json(
-      { answer: "Could not connect to RAG service. Is it running on " + RAG_URL + "?" },
+      {
+        answer:
+          "Could not connect to RAG service. Is it running on " +
+          RAG_URL +
+          "?",
+      },
       { status: 502 }
     );
   }
