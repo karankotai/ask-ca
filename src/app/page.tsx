@@ -142,12 +142,12 @@ export default function Home() {
           >
             Evaluate
           </Link>
-          {/* <Link
+          <Link
             href="/admin"
             className="text-sm text-zinc-400 hover:text-zinc-200"
           >
             Admin
-          </Link> */}
+          </Link>
         </div>
       </nav>
 

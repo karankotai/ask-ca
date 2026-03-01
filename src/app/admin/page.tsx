@@ -13,8 +13,8 @@ export default function AdminPage() {
   const [tab, setTab] = useState<Tab>("scraping");
 
   const tabs: { key: Tab; label: string }[] = [
-    { key: "scraping", label: "Scraping" },
-    { key: "indexing", label: "Indexing" },
+    // { key: "scraping", label: "Scraping" },
+    // { key: "indexing", label: "Indexing" },
     { key: "evaluate", label: "Evaluate" },
     { key: "reports", label: "Reports" },
   ];
@@ -67,8 +67,8 @@ export default function AdminPage() {
         </div>
 
         {/* Tab content */}
-        {tab === "scraping" && <ScrapingTab />}
-        {tab === "indexing" && <IndexingTab />}
+        {/* {tab === "scraping" && <ScrapingTab />}
+        {tab === "indexing" && <IndexingTab />} */}
         {tab === "evaluate" && <EvaluateTab />}
         {tab === "reports" && <ReportsTab />}
       </div>
