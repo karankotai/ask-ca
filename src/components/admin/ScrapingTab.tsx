@@ -8,6 +8,7 @@ const SOURCES = ["all", "rbi", "sebi", "mca", "irdai", "egazette"];
 export default function ScrapingTab() {
   const [source, setSource] = useState("all");
   const [maxPages, setMaxPages] = useState(50);
+  const [offset, setOffset] = useState(0);
   const [deepCrawl, setDeepCrawl] = useState(false);
   const [loading, setLoading] = useState(false);
   const [taskId, setTaskId] = useState<string | null>(null);
@@ -62,6 +63,7 @@ export default function ScrapingTab() {
           source,
           max_pages: maxPages,
           deep_crawl: deepCrawl,
+          offset,
         }),
       });
 
@@ -82,7 +84,7 @@ export default function ScrapingTab() {
 
   return (
     <div className="space-y-6">
-      <div className="grid gap-4 md:grid-cols-2">
+      <div className="grid gap-4 md:grid-cols-3">
         <div>
           <label className="mb-1 block text-sm font-medium text-zinc-300">
             Source
@@ -109,6 +111,19 @@ export default function ScrapingTab() {
             onChange={(e) => setMaxPages(Number(e.target.value))}
             min={1}
             max={500}
+            className="w-full rounded-xl bg-[#2f2f2f] px-4 py-3 text-white outline-none focus:ring-1 focus:ring-zinc-600"
+          />
+        </div>
+        <div>
+          <label className="mb-1 block text-sm font-medium text-zinc-300">
+            Record Offset
+          </label>
+          <input
+            type="number"
+            value={offset}
+            onChange={(e) => setOffset(Number(e.target.value))}
+            min={0}
+            max={10000}
             className="w-full rounded-xl bg-[#2f2f2f] px-4 py-3 text-white outline-none focus:ring-1 focus:ring-zinc-600"
           />
         </div>
