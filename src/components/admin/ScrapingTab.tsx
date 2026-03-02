@@ -4,40 +4,47 @@ import { useState, useEffect } from "react";
 import { LoadingDots, ErrorBox } from "./shared";
 
 const SOURCES = ["all", "rbi", "sebi", "mca", "irdai", "egazette"];
-const FORMATS = ["both", "json", "csv"];
 
 export default function ScrapingTab() {
   const [source, setSource] = useState("all");
   const [maxPages, setMaxPages] = useState(50);
   const [deepCrawl, setDeepCrawl] = useState(false);
-  const [format, setFormat] = useState("both");
   const [loading, setLoading] = useState(false);
   const [taskId, setTaskId] = useState<string | null>(null);
   const [status, setStatus] = useState<string | null>(null);
   const [recordCount, setRecordCount] = useState<number | null>(null);
   const [error, setError] = useState<string | null>(null);
 
-  // Poll for crawl status
+  // Stream crawl progress via SSE
   useEffect(() => {
     if (!taskId || status === "completed" || status === "failed") return;
 
-    const interval = setInterval(async () => {
-      try {
-        const res = await fetch(`/api/admin/crawl/${taskId}`);
-        const data = await res.json();
-        setStatus(data.status);
-        setRecordCount(data.record_count ?? null);
-        if (data.status === "completed" || data.status === "failed") {
-          setLoading(false);
-          if (data.error) setError(data.error);
-        }
-      } catch {
-        setError("Lost connection while polling.");
-        setLoading(false);
-      }
-    }, 3000);
+    const eventSource = new EventSource(`/api/admin/crawl/stream/${taskId}`);
 
-    return () => clearInterval(interval);
+    eventSource.onmessage = (e) => {
+      const event = JSON.parse(e.data);
+      if (event.type === "source_complete") {
+        setRecordCount(event.data.total_records);
+      } else if (event.type === "complete") {
+        setStatus("completed");
+        setRecordCount(event.data.record_count);
+        setLoading(false);
+        eventSource.close();
+      } else if (event.type === "error") {
+        setStatus("failed");
+        setError(event.data.message);
+        setLoading(false);
+        eventSource.close();
+      }
+    };
+
+    eventSource.onerror = () => {
+      eventSource.close();
+      setError("Lost connection to crawl stream.");
+      setLoading(false);
+    };
+
+    return () => eventSource.close();
   }, [taskId, status]);
 
   async function handleStart() {
@@ -55,7 +62,6 @@ export default function ScrapingTab() {
           source,
           max_pages: maxPages,
           deep_crawl: deepCrawl,
-          output_format: format,
         }),
       });
 
@@ -108,37 +114,17 @@ export default function ScrapingTab() {
         </div>
       </div>
 
-      <div className="grid gap-4 md:grid-cols-2">
-        <div>
-          <label className="mb-1 block text-sm font-medium text-zinc-300">
-            Output Format
-          </label>
-          <select
-            value={format}
-            onChange={(e) => setFormat(e.target.value)}
-            className="w-full rounded-xl bg-[#2f2f2f] px-4 py-3 text-white outline-none focus:ring-1 focus:ring-zinc-600"
-          >
-            {FORMATS.map((f) => (
-              <option key={f} value={f}>
-                {f.toUpperCase()}
-              </option>
-            ))}
-          </select>
-        </div>
-        <div className="flex items-end">
-          <label className="flex items-center gap-3 rounded-xl bg-[#2f2f2f] px-4 py-3">
-            <input
-              type="checkbox"
-              checked={deepCrawl}
-              onChange={(e) => setDeepCrawl(e.target.checked)}
-              className="h-4 w-4 rounded"
-            />
-            <span className="text-sm text-zinc-300">
-              Deep Crawl (follow links, extract full content)
-            </span>
-          </label>
-        </div>
-      </div>
+      <label className="flex items-center gap-3 rounded-xl bg-[#2f2f2f] px-4 py-3">
+        <input
+          type="checkbox"
+          checked={deepCrawl}
+          onChange={(e) => setDeepCrawl(e.target.checked)}
+          className="h-4 w-4 rounded"
+        />
+        <span className="text-sm text-zinc-300">
+          Deep Crawl (follow links, extract full content)
+        </span>
+      </label>
 
       <button
         onClick={handleStart}
