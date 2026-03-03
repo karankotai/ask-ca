@@ -55,9 +55,11 @@ export async function POST(req: NextRequest) {
     });
 
     return NextResponse.json(data);
-  } catch {
+  } catch (err) {
+    const message = err instanceof Error ? err.message : "Unknown error";
+    console.error("Evaluate route error:", message);
     return NextResponse.json(
-      { error: "Could not connect to RAG service at " + RAG_URL },
+      { error: message },
       { status: 502 }
     );
   }
