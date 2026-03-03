@@ -149,6 +149,9 @@ function PdfViewer({
   const pdfs = Array.isArray(pdfLinks) ? pdfLinks : [];
   const [activeIdx, setActiveIdx] = useState(0);
 
+  const proxyUrl = (url: string) =>
+    `/api/circulars/pdf?url=${encodeURIComponent(url)}`;
+
   if (pdfs.length === 0) {
     return content ? (
       <div className="rounded-xl bg-[#2f2f2f] p-5">
@@ -188,8 +191,8 @@ function PdfViewer({
       <div className="overflow-hidden rounded-xl bg-[#2f2f2f]">
         <iframe
           key={pdfs[activeIdx]}
-          src={pdfs[activeIdx]}
-          className="h-[80vh] w-full"
+          src={proxyUrl(pdfs[activeIdx])}
+          className="h-[100vh] w-full"
           title={`PDF ${activeIdx + 1}`}
         />
       </div>
