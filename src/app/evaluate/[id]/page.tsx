@@ -35,8 +35,13 @@ interface EvalRun {
   geminiAnswer: string | null;
   geminiAvgScore: number | null;
   geminiTotalScore: number | null;
+  customAnswer: string | null;
+  customAvgScore: number | null;
+  customTotalScore: number | null;
+  customScores: CriterionScore[] | null;
   ragAdvantageVsGpt: number | null;
   ragAdvantageVsGemini: number | null;
+  ragAdvantageVsCustom: number | null;
   ragScores: CriterionScore[];
   gptScores: CriterionScore[] | null;
   geminiScores: CriterionScore[] | null;
@@ -81,10 +86,12 @@ function ScoreTable({
   ragScores,
   gptScores,
   geminiScores,
+  customScores,
 }: {
   ragScores: CriterionScore[];
   gptScores: CriterionScore[] | null;
   geminiScores: CriterionScore[] | null;
+  customScores?: CriterionScore[] | null;
 }) {
   const ragMap = Object.fromEntries(ragScores.map((s) => [s.criterion, s]));
   const gptMap = gptScores
@@ -92,6 +99,9 @@ function ScoreTable({
     : null;
   const gemMap = geminiScores
     ? Object.fromEntries(geminiScores.map((s) => [s.criterion, s]))
+    : null;
+  const custMap = customScores
+    ? Object.fromEntries(customScores.map((s) => [s.criterion, s]))
     : null;
   const criteria = ragScores.map((s) => s.criterion);
 
@@ -104,8 +114,10 @@ function ScoreTable({
             <th className="px-3 py-2 text-center">RAG</th>
             {gptMap && <th className="px-3 py-2 text-center">GPT</th>}
             {gemMap && <th className="px-3 py-2 text-center">Gemini</th>}
+            {custMap && <th className="px-3 py-2 text-center">Custom</th>}
             {gptMap && <th className="px-2 py-2 text-center">vs GPT</th>}
-            {gemMap && <th className="py-2 pl-2 text-center">vs Gemini</th>}
+            {gemMap && <th className="px-2 py-2 text-center">vs Gemini</th>}
+            {custMap && <th className="py-2 pl-2 text-center">vs Custom</th>}
           </tr>
         </thead>
         <tbody>
@@ -113,6 +125,7 @@ function ScoreTable({
             const ragS = ragMap[crit]?.score ?? 0;
             const gptS = gptMap?.[crit]?.score ?? 0;
             const gemS = gemMap?.[crit]?.score ?? 0;
+            const custS = custMap?.[crit]?.score ?? 0;
             return (
               <tr key={crit} className="border-b border-zinc-800">
                 <td className="py-3 pr-4 text-zinc-300">{crit}</td>
@@ -135,14 +148,26 @@ function ScoreTable({
                     </div>
                   </td>
                 )}
+                {custMap && (
+                  <td className="px-3 py-3">
+                    <div className="flex justify-center">
+                      <ScoreBar score={custS} />
+                    </div>
+                  </td>
+                )}
                 {gptMap && (
                   <td className="px-2 py-3 text-center">
                     <DeltaBadge value={ragS - gptS} />
                   </td>
                 )}
                 {gemMap && (
-                  <td className="py-3 pl-2 text-center">
+                  <td className="px-2 py-3 text-center">
                     <DeltaBadge value={ragS - gemS} />
+                  </td>
+                )}
+                {custMap && (
+                  <td className="py-3 pl-2 text-center">
+                    <DeltaBadge value={ragS - custS} />
                   </td>
                 )}
               </tr>
@@ -158,10 +183,12 @@ function ReasoningPanel({
   ragScores,
   gptScores,
   geminiScores,
+  customScores,
 }: {
   ragScores: CriterionScore[];
   gptScores: CriterionScore[] | null;
   geminiScores: CriterionScore[] | null;
+  customScores?: CriterionScore[] | null;
 }) {
   const ragMap = Object.fromEntries(ragScores.map((s) => [s.criterion, s]));
   const gptMap = gptScores
@@ -170,8 +197,11 @@ function ReasoningPanel({
   const gemMap = geminiScores
     ? Object.fromEntries(geminiScores.map((s) => [s.criterion, s]))
     : null;
+  const custMap = customScores
+    ? Object.fromEntries(customScores.map((s) => [s.criterion, s]))
+    : null;
   const criteria = ragScores.map((s) => s.criterion);
-  const cols = 1 + (gptMap ? 1 : 0) + (gemMap ? 1 : 0);
+  const cols = 1 + (gptMap ? 1 : 0) + (gemMap ? 1 : 0) + (custMap ? 1 : 0);
 
   return (
     <div className="space-y-3">
@@ -201,6 +231,14 @@ function ReasoningPanel({
                 </p>
               </div>
             )}
+            {custMap && (
+              <div>
+                <p className="text-xs font-semibold text-purple-400">Custom</p>
+                <p className="text-xs text-zinc-400">
+                  {custMap[crit]?.reasoning ?? "\u2014"}
+                </p>
+              </div>
+            )}
           </div>
         </div>
       ))}
@@ -211,8 +249,9 @@ function ReasoningPanel({
 function AnswerComparison({ run }: { run: EvalRun }) {
   const hasGpt = run.gptAnswer != null;
   const hasGemini = run.geminiAnswer != null;
+  const hasCustom = run.customAnswer != null;
 
-  type AnswerTab = "rag" | "gpt" | "gemini";
+  type AnswerTab = "rag" | "gpt" | "gemini" | "custom";
   const [tab, setTab] = useState<AnswerTab>("rag");
 
   const answer =
@@ -220,7 +259,9 @@ function AnswerComparison({ run }: { run: EvalRun }) {
       ? run.ragAnswer
       : tab === "gpt"
         ? run.gptAnswer
-        : run.geminiAnswer;
+        : tab === "custom"
+          ? run.customAnswer
+          : run.geminiAnswer;
 
   return (
     <div>
@@ -257,6 +298,18 @@ function AnswerComparison({ run }: { run: EvalRun }) {
             }`}
           >
             Gemini Answer
+          </button>
+        )}
+        {hasCustom && (
+          <button
+            onClick={() => setTab("custom")}
+            className={`rounded-lg px-3 py-1.5 text-sm font-medium transition-colors ${
+              tab === "custom"
+                ? "bg-purple-600 text-white"
+                : "bg-zinc-800 text-zinc-400 hover:text-zinc-200"
+            }`}
+          >
+            Custom Answer
           </button>
         )}
       </div>
@@ -362,6 +415,7 @@ export default function EvalDetailPage() {
 
   const hasGpt = run?.gptAnswer != null;
   const hasGemini = run?.geminiAnswer != null;
+  const hasCustom = run?.customAnswer != null;
 
   return (
     <div className="flex min-h-screen flex-col bg-[#212121] text-white">
@@ -462,6 +516,14 @@ export default function EvalDetailPage() {
                     <p className="text-xs text-zinc-400">Gemini</p>
                   </div>
                 )}
+                {hasCustom && run.customAvgScore != null && (
+                  <div>
+                    <p className="text-2xl font-bold text-purple-400">
+                      {run.customAvgScore.toFixed(1)}
+                    </p>
+                    <p className="text-xs text-zinc-400">Custom</p>
+                  </div>
+                )}
                 {run.ragAdvantageVsGpt != null && (
                   <div className="border-l border-zinc-700 pl-5">
                     <AdvantageBadge value={run.ragAdvantageVsGpt} label="vs GPT" />
@@ -469,6 +531,9 @@ export default function EvalDetailPage() {
                 )}
                 {run.ragAdvantageVsGemini != null && (
                   <AdvantageBadge value={run.ragAdvantageVsGemini} label="vs Gemini" />
+                )}
+                {run.ragAdvantageVsCustom != null && (
+                  <AdvantageBadge value={run.ragAdvantageVsCustom} label="vs Custom" />
                 )}
               </div>
             </div>
@@ -480,6 +545,7 @@ export default function EvalDetailPage() {
                 ragScores={run.ragScores}
                 gptScores={run.gptScores}
                 geminiScores={run.geminiScores}
+                customScores={run.customScores}
               />
             </div>
 
@@ -490,6 +556,7 @@ export default function EvalDetailPage() {
                 ragScores={run.ragScores}
                 gptScores={run.gptScores}
                 geminiScores={run.geminiScores}
+                customScores={run.customScores}
               />
             </div>
 

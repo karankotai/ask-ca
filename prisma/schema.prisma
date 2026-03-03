@@ -183,27 +183,32 @@ model users {
 }
 
 model EvalRun {
-  id                   String   @id @default(cuid())
-  createdAt            DateTime @default(now())
-  question             String
-  groundTruth          String?
-  sourceFilter         String?
-  baselines            String[] @default(["gpt", "gemini"])
-  ragAnswer            String
-  ragAvgScore          Float
-  ragTotalScore        Int
-  gptAnswer            String?
-  gptAvgScore          Float?
-  gptTotalScore        Int?
-  geminiAnswer         String?
-  geminiAvgScore       Float?
-  geminiTotalScore     Int?
-  ragAdvantageVsGpt    Float?
-  ragAdvantageVsGemini Float?
-  ragScores            Json
-  gptScores            Json?
-  geminiScores         Json?
-  ragSources           Json
+  id                     String   @id @default(cuid())
+  createdAt              DateTime @default(now())
+  question               String
+  groundTruth            String?
+  sourceFilter           String?
+  baselines              String[] @default(["gpt", "gemini"])
+  ragAnswer              String
+  ragAvgScore            Float
+  ragTotalScore          Int
+  gptAnswer              String?
+  gptAvgScore            Float?
+  gptTotalScore          Int?
+  geminiAnswer           String?
+  geminiAvgScore         Float?
+  geminiTotalScore       Int?
+  customAnswer           String?
+  customAvgScore         Float?
+  customTotalScore       Int?
+  customScores           Json?
+  ragAdvantageVsGpt      Float?
+  ragAdvantageVsGemini   Float?
+  ragAdvantageVsCustom   Float?
+  ragScores              Json
+  gptScores              Json?
+  geminiScores           Json?
+  ragSources             Json
 }
 
 model ScrapedDocument {

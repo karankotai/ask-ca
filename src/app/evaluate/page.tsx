@@ -32,9 +32,11 @@ interface QuestionEvalResult {
   rag_eval: SingleAnswerEval;
   vanilla_gpt_eval: SingleAnswerEval | null;
   vanilla_gemini_eval: SingleAnswerEval | null;
+  custom_eval: SingleAnswerEval | null;
   rag_sources: Source[];
   rag_advantage_vs_gpt: number | null;
   rag_advantage_vs_gemini: number | null;
+  rag_advantage_vs_custom: number | null;
 }
 
 const CRITERIA = [
@@ -83,10 +85,12 @@ function ScoreTable({
   ragScores,
   gptScores,
   geminiScores,
+  customScores,
 }: {
   ragScores: CriterionScore[];
   gptScores: CriterionScore[] | null;
   geminiScores: CriterionScore[] | null;
+  customScores?: CriterionScore[] | null;
 }) {
   const ragMap = Object.fromEntries(ragScores.map((s) => [s.criterion, s]));
   const gptMap = gptScores
@@ -94,6 +98,9 @@ function ScoreTable({
     : null;
   const gemMap = geminiScores
     ? Object.fromEntries(geminiScores.map((s) => [s.criterion, s]))
+    : null;
+  const custMap = customScores
+    ? Object.fromEntries(customScores.map((s) => [s.criterion, s]))
     : null;
 
   return (
@@ -105,8 +112,10 @@ function ScoreTable({
             <th className="px-3 py-2 text-center">RAG</th>
             {gptMap && <th className="px-3 py-2 text-center">GPT</th>}
             {gemMap && <th className="px-3 py-2 text-center">Gemini</th>}
+            {custMap && <th className="px-3 py-2 text-center">Custom</th>}
             {gptMap && <th className="px-2 py-2 text-center">vs GPT</th>}
-            {gemMap && <th className="py-2 pl-2 text-center">vs Gemini</th>}
+            {gemMap && <th className="px-2 py-2 text-center">vs Gemini</th>}
+            {custMap && <th className="py-2 pl-2 text-center">vs Custom</th>}
           </tr>
         </thead>
         <tbody>
@@ -114,6 +123,7 @@ function ScoreTable({
             const ragS = ragMap[crit]?.score ?? 0;
             const gptS = gptMap?.[crit]?.score ?? 0;
             const gemS = gemMap?.[crit]?.score ?? 0;
+            const custS = custMap?.[crit]?.score ?? 0;
             return (
               <tr key={crit} className="border-b border-zinc-800">
                 <td className="py-3 pr-4 text-zinc-300">{crit}</td>
@@ -136,14 +146,26 @@ function ScoreTable({
                     </div>
                   </td>
                 )}
+                {custMap && (
+                  <td className="px-3 py-3">
+                    <div className="flex justify-center">
+                      <ScoreBar score={custS} />
+                    </div>
+                  </td>
+                )}
                 {gptMap && (
                   <td className="px-2 py-3 text-center">
                     <DeltaBadge value={ragS - gptS} />
                   </td>
                 )}
                 {gemMap && (
-                  <td className="py-3 pl-2 text-center">
+                  <td className="px-2 py-3 text-center">
                     <DeltaBadge value={ragS - gemS} />
+                  </td>
+                )}
+                {custMap && (
+                  <td className="py-3 pl-2 text-center">
+                    <DeltaBadge value={ragS - custS} />
                   </td>
                 )}
               </tr>
@@ -159,10 +181,12 @@ function ReasoningPanel({
   ragScores,
   gptScores,
   geminiScores,
+  customScores,
 }: {
   ragScores: CriterionScore[];
   gptScores: CriterionScore[] | null;
   geminiScores: CriterionScore[] | null;
+  customScores?: CriterionScore[] | null;
 }) {
   const [open, setOpen] = useState(false);
   const ragMap = Object.fromEntries(ragScores.map((s) => [s.criterion, s]));
@@ -172,8 +196,11 @@ function ReasoningPanel({
   const gemMap = geminiScores
     ? Object.fromEntries(geminiScores.map((s) => [s.criterion, s]))
     : null;
+  const custMap = customScores
+    ? Object.fromEntries(customScores.map((s) => [s.criterion, s]))
+    : null;
 
-  const cols = 1 + (gptMap ? 1 : 0) + (gemMap ? 1 : 0);
+  const cols = 1 + (gptMap ? 1 : 0) + (gemMap ? 1 : 0) + (custMap ? 1 : 0);
 
   return (
     <div>
@@ -211,6 +238,14 @@ function ReasoningPanel({
                     </p>
                   </div>
                 )}
+                {custMap && (
+                  <div>
+                    <p className="text-xs font-semibold text-purple-400">Custom</p>
+                    <p className="text-xs text-zinc-400">
+                      {custMap[crit]?.reasoning ?? "\u2014"}
+                    </p>
+                  </div>
+                )}
               </div>
             </div>
           ))}
@@ -223,8 +258,9 @@ function ReasoningPanel({
 function AnswerComparison({ result }: { result: QuestionEvalResult }) {
   const hasGpt = result.vanilla_gpt_eval != null;
   const hasGemini = result.vanilla_gemini_eval != null;
+  const hasCustom = result.custom_eval != null;
 
-  type AnswerTab = "rag" | "gpt" | "gemini";
+  type AnswerTab = "rag" | "gpt" | "gemini" | "custom";
   const [tab, setTab] = useState<AnswerTab>("rag");
 
   const eval_ =
@@ -232,7 +268,9 @@ function AnswerComparison({ result }: { result: QuestionEvalResult }) {
       ? result.rag_eval
       : tab === "gpt"
         ? result.vanilla_gpt_eval
-        : result.vanilla_gemini_eval;
+        : tab === "custom"
+          ? result.custom_eval
+          : result.vanilla_gemini_eval;
 
   return (
     <div>
@@ -269,6 +307,18 @@ function AnswerComparison({ result }: { result: QuestionEvalResult }) {
             }`}
           >
             Gemini Answer
+          </button>
+        )}
+        {hasCustom && (
+          <button
+            onClick={() => setTab("custom")}
+            className={`rounded-lg px-3 py-1.5 text-sm font-medium transition-colors ${
+              tab === "custom"
+                ? "bg-purple-600 text-white"
+                : "bg-zinc-800 text-zinc-400 hover:text-zinc-200"
+            }`}
+          >
+            Custom Answer
           </button>
         )}
       </div>
@@ -352,6 +402,7 @@ export default function EvaluatePage() {
   const [groundTruth, setGroundTruth] = useState("");
   const [sourceFilter, setSourceFilter] = useState("");
   const [baselines, setBaselines] = useState<string[]>(["gpt", "gemini"]);
+  const [customAnswer, setCustomAnswer] = useState("");
   const [loading, setLoading] = useState(false);
   const [result, setResult] = useState<QuestionEvalResult | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -362,19 +413,25 @@ export default function EvaluatePage() {
     );
   }
 
+  const hasCustomBaseline = baselines.includes("custom");
+
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     const q = question.trim();
-    if (!q || loading || baselines.length === 0) return;
+    if (!q || loading) return;
+    const llmBaselines = baselines.filter((b) => b !== "custom");
+    if (llmBaselines.length === 0 && !hasCustomBaseline) return;
+    if (hasCustomBaseline && !customAnswer.trim()) return;
 
     setLoading(true);
     setError(null);
     setResult(null);
 
     try {
-      const body: Record<string, unknown> = { question: q, baselines };
+      const body: Record<string, unknown> = { question: q, baselines: llmBaselines };
       if (groundTruth.trim()) body.ground_truth = groundTruth.trim();
       if (sourceFilter.trim()) body.source_filter = sourceFilter.trim();
+      if (hasCustomBaseline && customAnswer.trim()) body.custom_answer = customAnswer.trim();
 
       const res = await fetch("/api/evaluate", {
         method: "POST",
@@ -397,11 +454,13 @@ export default function EvaluatePage() {
 
   const hasGpt = result?.vanilla_gpt_eval != null;
   const hasGemini = result?.vanilla_gemini_eval != null;
+  const hasCustom = result?.custom_eval != null;
 
   const baselinesLabel = [
     "RAG",
     ...(baselines.includes("gpt") ? ["GPT"] : []),
     ...(baselines.includes("gemini") ? ["Gemini"] : []),
+    ...(baselines.includes("custom") ? ["Custom"] : []),
   ].join(" + ");
 
   return (
@@ -445,6 +504,7 @@ export default function EvaluatePage() {
               onChange={(e) => setQuestion(e.target.value)}
               placeholder="e.g. What are the latest RBI NBFC guidelines?"
               rows={2}
+              maxLength={2000}
               className="w-full rounded-xl bg-[#2f2f2f] px-4 py-3 text-white placeholder-zinc-500 outline-none focus:ring-1 focus:ring-zinc-600"
             />
           </div>
@@ -460,6 +520,7 @@ export default function EvaluatePage() {
                 onChange={(e) => setGroundTruth(e.target.value)}
                 placeholder="Reference answer for comparison..."
                 rows={2}
+                maxLength={5000}
                 className="w-full rounded-xl bg-[#2f2f2f] px-4 py-3 text-sm text-white placeholder-zinc-500 outline-none focus:ring-1 focus:ring-zinc-600"
               />
             </div>
@@ -468,12 +529,18 @@ export default function EvaluatePage() {
                 Source Filter{" "}
                 <span className="text-zinc-500">(optional)</span>
               </label>
-              <input
+              <select
                 value={sourceFilter}
                 onChange={(e) => setSourceFilter(e.target.value)}
-                placeholder="e.g. RBI, SEBI, IRDAI, MCA"
-                className="w-full rounded-xl bg-[#2f2f2f] px-4 py-3 text-sm text-white placeholder-zinc-500 outline-none focus:ring-1 focus:ring-zinc-600"
-              />
+                className="w-full rounded-xl bg-[#2f2f2f] px-4 py-3 text-sm text-white outline-none focus:ring-1 focus:ring-zinc-600"
+              >
+                <option value="">All sources</option>
+                <option value="rbi">RBI</option>
+                <option value="sebi">SEBI</option>
+                <option value="mca">MCA</option>
+                <option value="irdai">IRDAI</option>
+                <option value="egazette">E-Gazette</option>
+              </select>
             </div>
           </div>
 
@@ -501,12 +568,37 @@ export default function EvaluatePage() {
                 />
                 <span className="text-sm text-blue-400 font-medium">Gemini</span>
               </label>
+              <label className="flex items-center gap-2 rounded-xl bg-[#2f2f2f] px-4 py-2.5">
+                <input
+                  type="checkbox"
+                  checked={baselines.includes("custom")}
+                  onChange={() => toggleBaseline("custom")}
+                  className="h-4 w-4 rounded"
+                />
+                <span className="text-sm text-purple-400 font-medium">Custom Answer</span>
+              </label>
             </div>
           </div>
 
+          {hasCustomBaseline && (
+            <div>
+              <label className="mb-1 block text-sm font-medium text-zinc-300">
+                Custom Answer
+              </label>
+              <textarea
+                value={customAnswer}
+                onChange={(e) => setCustomAnswer(e.target.value)}
+                placeholder="Paste your custom answer to evaluate against RAG..."
+                rows={4}
+                maxLength={10000}
+                className="w-full rounded-xl bg-[#2f2f2f] px-4 py-3 text-sm text-white placeholder-zinc-500 outline-none focus:ring-1 focus:ring-purple-600"
+              />
+            </div>
+          )}
+
           <button
             type="submit"
-            disabled={loading || !question.trim() || baselines.length === 0}
+            disabled={loading || !question.trim() || baselines.length === 0 || (hasCustomBaseline && !customAnswer.trim())}
             className="rounded-xl bg-white px-6 py-2.5 text-sm font-semibold text-black transition-colors hover:bg-zinc-200 disabled:opacity-30"
           >
             {loading ? "Evaluating..." : "Run Evaluation"}
@@ -566,6 +658,14 @@ export default function EvaluatePage() {
                     <p className="text-xs text-zinc-400">Gemini</p>
                   </div>
                 )}
+                {hasCustom && (
+                  <div>
+                    <p className="text-2xl font-bold text-purple-400">
+                      {result.custom_eval!.average_score.toFixed(1)}
+                    </p>
+                    <p className="text-xs text-zinc-400">Custom</p>
+                  </div>
+                )}
                 {hasGpt && result.rag_advantage_vs_gpt != null && (
                   <div className="border-l border-zinc-700 pl-5">
                     <AdvantageBadge value={result.rag_advantage_vs_gpt} label="vs GPT" />
@@ -573,6 +673,9 @@ export default function EvaluatePage() {
                 )}
                 {hasGemini && result.rag_advantage_vs_gemini != null && (
                   <AdvantageBadge value={result.rag_advantage_vs_gemini} label="vs Gemini" />
+                )}
+                {hasCustom && result.rag_advantage_vs_custom != null && (
+                  <AdvantageBadge value={result.rag_advantage_vs_custom} label="vs Custom" />
                 )}
               </div>
             </div>
@@ -586,6 +689,7 @@ export default function EvaluatePage() {
                 ragScores={result.rag_eval.scores}
                 gptScores={result.vanilla_gpt_eval?.scores ?? null}
                 geminiScores={result.vanilla_gemini_eval?.scores ?? null}
+                customScores={result.custom_eval?.scores ?? null}
               />
             </div>
 
@@ -595,6 +699,7 @@ export default function EvaluatePage() {
                 ragScores={result.rag_eval.scores}
                 gptScores={result.vanilla_gpt_eval?.scores ?? null}
                 geminiScores={result.vanilla_gemini_eval?.scores ?? null}
+                customScores={result.custom_eval?.scores ?? null}
               />
             </div>
 
