@@ -429,6 +429,12 @@ export default function EvalDetailPage() {
             Chat
           </Link>
           <Link
+            href="/circulars"
+            className="text-sm text-zinc-400 hover:text-zinc-200"
+          >
+            Circulars
+          </Link>
+          <Link
             href="/evaluate"
             className="text-sm text-zinc-400 hover:text-zinc-200"
           >

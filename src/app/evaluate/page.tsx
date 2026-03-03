@@ -474,6 +474,12 @@ export default function EvaluatePage() {
           >
             Chat
           </Link>
+          <Link
+            href="/circulars"
+            className="text-sm text-zinc-400 hover:text-zinc-200"
+          >
+            Circulars
+          </Link>
           <span className="text-sm font-medium text-white">Evaluate</span>
           <Link
             href="/admin"

@@ -137,6 +137,12 @@ export default function Home() {
         <div className="mx-auto flex max-w-3xl items-center gap-6">
           <span className="text-sm font-medium text-white">Chat</span>
           <Link
+            href="/circulars"
+            className="text-sm text-zinc-400 hover:text-zinc-200"
+          >
+            Circulars
+          </Link>
+          <Link
             href="/evaluate"
             className="text-sm text-zinc-400 hover:text-zinc-200"
           >
