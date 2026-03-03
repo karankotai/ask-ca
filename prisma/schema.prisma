@@ -232,6 +232,29 @@ model ScrapedDocument {
   @@index([source])
 }
 
+model ChatSession {
+  id        Int           @id @default(autoincrement())
+  title     String        @default("")
+  createdAt DateTime      @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt DateTime      @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(6)
+  messages  ChatMessage[]
+
+  @@map("chat_sessions")
+}
+
+model ChatMessage {
+  id        Int         @id @default(autoincrement())
+  sessionId Int         @map("session_id")
+  role      String
+  content   String
+  sources   Json        @default("[]")
+  createdAt DateTime    @default(now()) @map("created_at") @db.Timestamptz(6)
+  session   ChatSession @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+
+  @@index([sessionId])
+  @@map("chat_messages")
+}
+
 enum applet_type {
   code_blocks           @map("code-blocks")
   slope_graph           @map("slope-graph")
