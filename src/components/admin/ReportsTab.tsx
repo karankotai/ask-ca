@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, Fragment } from "react";
 import Link from "next/link";
 import { LoadingDots, ErrorBox, CriterionScore, EvalRunRecord } from "./shared";
 
@@ -131,9 +131,8 @@ export default function ReportsTab() {
           </thead>
           <tbody>
             {runs.map((run) => (
-              <>
+              <Fragment key={run.id}>
                 <tr
-                  key={run.id}
                   className="cursor-pointer border-b border-zinc-800 transition-colors hover:bg-zinc-800/50"
                   onClick={() =>
                     setExpanded(expanded === run.id ? null : run.id)
@@ -201,7 +200,7 @@ export default function ReportsTab() {
                 </tr>
 
                 {expanded === run.id && (
-                  <tr key={`${run.id}-detail`} className="border-b border-zinc-800">
+                  <tr className="border-b border-zinc-800">
                     <td colSpan={3 + (anyGpt ? 2 : 0) + (anyGemini ? 2 : 0)} className="px-4 py-4">
                       <div className="space-y-3">
                         <p className="text-xs text-zinc-500">
@@ -259,7 +258,7 @@ export default function ReportsTab() {
                     </td>
                   </tr>
                 )}
-              </>
+              </Fragment>
             ))}
           </tbody>
         </table>
