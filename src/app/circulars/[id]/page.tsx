@@ -148,9 +148,22 @@ function PdfViewer({
 }) {
   const pdfs = Array.isArray(pdfLinks) ? pdfLinks : [];
   const [activeIdx, setActiveIdx] = useState(0);
+  const [pdfBlocked, setPdfBlocked] = useState(false);
 
   const proxyUrl = (url: string) =>
     `/api/circulars/pdf?url=${encodeURIComponent(url)}`;
+
+  // Check if the proxy can serve the PDF; fall back if blocked
+  useEffect(() => {
+    if (pdfs.length === 0) return;
+    setPdfBlocked(false);
+    const url = proxyUrl(pdfs[activeIdx]);
+    fetch(url, { method: "HEAD" }).then((res) => {
+      if (!res.ok || res.headers.get("content-type")?.includes("text/html")) {
+        setPdfBlocked(true);
+      }
+    }).catch(() => setPdfBlocked(true));
+  }, [activeIdx, pdfs.length]); // eslint-disable-line react-hooks/exhaustive-deps
 
   if (pdfs.length === 0) {
     return content ? (
@@ -187,26 +200,58 @@ function PdfViewer({
         </div>
       )}
 
-      {/* PDF embed */}
-      <div className="overflow-hidden rounded-xl bg-[#2f2f2f]">
-        <iframe
-          key={pdfs[activeIdx]}
-          src={proxyUrl(pdfs[activeIdx])}
-          className="h-[100vh] w-full"
-          title={`PDF ${activeIdx + 1}`}
-        />
-      </div>
+      {pdfBlocked ? (
+        /* Fallback when PDF proxy is blocked by CAPTCHA */
+        <div className="space-y-4">
+          <div className="rounded-xl bg-yellow-900/30 px-4 py-3 text-sm text-yellow-300">
+            The source website blocked the embedded PDF viewer. You can open the
+            PDF directly in your browser instead.
+          </div>
+          <div className="flex gap-3">
+            <a
+              href={pdfs[activeIdx]}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="inline-flex items-center gap-2 rounded-lg bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-500"
+            >
+              Open PDF in browser
+            </a>
+          </div>
+          {content && (
+            <div className="rounded-xl bg-[#2f2f2f] p-5">
+              <h3 className="mb-3 text-sm font-semibold text-zinc-300">
+                Scraped text content
+              </h3>
+              <pre className="whitespace-pre-wrap text-sm leading-relaxed text-zinc-400">
+                {content}
+              </pre>
+            </div>
+          )}
+        </div>
+      ) : (
+        /* Normal PDF embed */
+        <>
+          <div className="overflow-hidden rounded-xl bg-[#2f2f2f]">
+            <iframe
+              key={pdfs[activeIdx]}
+              src={proxyUrl(pdfs[activeIdx])}
+              className="h-[100vh] w-full"
+              title={`PDF ${activeIdx + 1}`}
+            />
+          </div>
 
-      <div className="flex justify-end">
-        <a
-          href={pdfs[activeIdx]}
-          target="_blank"
-          rel="noopener noreferrer"
-          className="text-sm text-blue-400 hover:underline"
-        >
-          Open PDF in new tab
-        </a>
-      </div>
+          <div className="flex justify-end">
+            <a
+              href={pdfs[activeIdx]}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="text-sm text-blue-400 hover:underline"
+            >
+              Open PDF in new tab
+            </a>
+          </div>
+        </>
+      )}
     </div>
   );
 }
