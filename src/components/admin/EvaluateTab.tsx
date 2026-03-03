@@ -82,6 +82,7 @@ export default function EvaluateTab() {
             onChange={(e) => setQuestion(e.target.value)}
             placeholder="e.g. What are the latest RBI NBFC guidelines?"
             rows={2}
+            maxLength={2000}
             className="w-full rounded-xl bg-[#2f2f2f] px-4 py-3 text-white placeholder-zinc-500 outline-none focus:ring-1 focus:ring-zinc-600"
           />
         </div>
@@ -96,6 +97,7 @@ export default function EvaluateTab() {
               onChange={(e) => setGroundTruth(e.target.value)}
               placeholder="Reference answer for comparison..."
               rows={2}
+              maxLength={5000}
               className="w-full rounded-xl bg-[#2f2f2f] px-4 py-3 text-sm text-white placeholder-zinc-500 outline-none focus:ring-1 focus:ring-zinc-600"
             />
           </div>
@@ -103,12 +105,18 @@ export default function EvaluateTab() {
             <label className="mb-1 block text-sm font-medium text-zinc-300">
               Source Filter <span className="text-zinc-500">(optional)</span>
             </label>
-            <input
+            <select
               value={sourceFilter}
               onChange={(e) => setSourceFilter(e.target.value)}
-              placeholder="e.g. RBI, SEBI, IRDAI, MCA"
-              className="w-full rounded-xl bg-[#2f2f2f] px-4 py-3 text-sm text-white placeholder-zinc-500 outline-none focus:ring-1 focus:ring-zinc-600"
-            />
+              className="w-full rounded-xl bg-[#2f2f2f] px-4 py-3 text-sm text-white outline-none focus:ring-1 focus:ring-zinc-600"
+            >
+              <option value="">All sources</option>
+              <option value="rbi">RBI</option>
+              <option value="sebi">SEBI</option>
+              <option value="mca">MCA</option>
+              <option value="irdai">IRDAI</option>
+              <option value="egazette">E-Gazette</option>
+            </select>
           </div>
         </div>
 
