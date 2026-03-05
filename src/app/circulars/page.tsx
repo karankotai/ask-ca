@@ -11,6 +11,7 @@ const SOURCES = [
   { value: "MCA", label: "MCA" },
   { value: "IRDAI", label: "IRDAI" },
   { value: "egazette", label: "E-Gazette" },
+  { value: "other", label: "Custom" },
 ];
 
 interface Circular {
@@ -30,6 +31,7 @@ const SOURCE_COLORS: Record<string, string> = {
   mca: "bg-blue-600",
   irdai: "bg-purple-600",
   egazette: "bg-yellow-600",
+  other: "bg-pink-600",
 };
 
 function sourceColorClass(source: string): string {
