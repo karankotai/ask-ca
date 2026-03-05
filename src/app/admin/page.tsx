@@ -6,15 +6,17 @@ import ScrapingTab from "@/components/admin/ScrapingTab";
 import IndexingTab from "@/components/admin/IndexingTab";
 import EvaluateTab from "@/components/admin/EvaluateTab";
 import ReportsTab from "@/components/admin/ReportsTab";
+import UploadTab from "@/components/admin/UploadTab";
 
-type Tab = "scraping" | "indexing" | "evaluate" | "reports";
+type Tab = "scraping" | "indexing" | "upload" | "evaluate" | "reports";
 
 export default function AdminPage() {
-  const [tab, setTab] = useState<Tab>("scraping");
+  const [tab, setTab] = useState<Tab>("upload");
 
   const tabs: { key: Tab; label: string }[] = [
     // { key: "scraping", label: "Scraping" },
     // { key: "indexing", label: "Indexing" },
+    { key: "upload", label: "Upload" },
     { key: "evaluate", label: "Evaluate" },
     { key: "reports", label: "Reports" },
   ];
@@ -75,6 +77,7 @@ export default function AdminPage() {
         {/* Tab content */}
         {/* {tab === "scraping" && <ScrapingTab />}
         {tab === "indexing" && <IndexingTab />} */}
+        {tab === "upload" && <UploadTab />}
         {tab === "evaluate" && <EvaluateTab />}
         {tab === "reports" && <ReportsTab />}
       </div>
