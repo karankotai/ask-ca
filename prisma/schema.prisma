@@ -255,6 +255,17 @@ model ChatMessage {
   @@map("chat_messages")
 }
 
+model CircularAnalysis {
+  id        String   @id @default(cuid())
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  title     String   @default("")
+  inputMode String   @default("text") @map("input_mode")
+  fileName  String?  @map("file_name")
+  analysis  String
+
+  @@map("circular_analyses")
+}
+
 enum applet_type {
   code_blocks           @map("code-blocks")
   slope_graph           @map("slope-graph")

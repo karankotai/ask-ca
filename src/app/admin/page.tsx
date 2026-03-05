@@ -44,6 +44,12 @@ export default function AdminPage() {
           >
             Evaluate
           </Link>
+          <Link
+            href="/analyze"
+            className="text-sm text-zinc-400 hover:text-zinc-200"
+          >
+            Analyze
+          </Link>
           <span className="text-sm font-medium text-white">Admin</span>
         </div>
       </nav>
