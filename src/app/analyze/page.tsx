@@ -111,6 +111,22 @@ export default function AnalyzePage() {
         }
       }
 
+      // Process any remaining data left in the buffer
+      if (buffer.trim()) {
+        const match = buffer.match(/^data:\s*(.+)$/m);
+        if (match) {
+          try {
+            const event = JSON.parse(match[1]);
+            if (event.type === "token") {
+              fullAnalysis += event.data;
+              setAnalysis((prev) => prev + event.data);
+            }
+          } catch {
+            // ignore malformed trailing data
+          }
+        }
+      }
+
       // Save analysis after stream completes
       if (fullAnalysis) {
         fetch("/api/analyze/save", {
