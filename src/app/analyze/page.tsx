@@ -17,7 +17,8 @@ interface HistoryItem {
 export default function AnalyzePage() {
   const [inputMode, setInputMode] = useState<InputMode>("text");
   const [text, setText] = useState("");
-  const [file, setFile] = useState<File | null>(null);
+  const [files, setFiles] = useState<File[]>([]);
+  const [merge, setMerge] = useState(false);
   const [loading, setLoading] = useState(false);
   const [analysis, setAnalysis] = useState("");
   const [error, setError] = useState<string | null>(null);
@@ -30,6 +31,13 @@ export default function AnalyzePage() {
   const [historyLoading, setHistoryLoading] = useState(false);
   const [expandedId, setExpandedId] = useState<string | null>(null);
   const [expandedAnalysis, setExpandedAnalysis] = useState<string | null>(null);
+  const [copied, setCopied] = useState(false);
+
+  async function handleCopy(text: string) {
+    await navigator.clipboard.writeText(text);
+    setCopied(true);
+    setTimeout(() => setCopied(false), 2000);
+  }
 
   const fetchHistory = useCallback(async (page: number) => {
     setHistoryLoading(true);
@@ -57,8 +65,9 @@ export default function AnalyzePage() {
     if (loading) return;
 
     const formData = new FormData();
-    if (inputMode === "pdf" && file) {
-      formData.append("file", file);
+    if (inputMode === "pdf" && files.length > 0) {
+      for (const f of files) formData.append("file", f);
+      if (merge) formData.append("merge", "true");
     } else if (inputMode === "text" && text.trim()) {
       formData.append("text", text.trim());
     } else {
@@ -133,9 +142,9 @@ export default function AnalyzePage() {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
-            title: file?.name || text.trim().slice(0, 80),
+            title: files.length > 0 ? files.map((f) => f.name).join(", ") : text.trim().slice(0, 80),
             inputMode,
-            fileName: file?.name ?? null,
+            fileName: files[0]?.name ?? null,
             analysis: fullAnalysis,
           }),
         }).then(() => fetchHistory(1));
@@ -168,9 +177,11 @@ export default function AnalyzePage() {
 
   function handleDrop(e: React.DragEvent) {
     e.preventDefault();
-    const dropped = e.dataTransfer.files[0];
-    if (dropped && dropped.type === "application/pdf") {
-      setFile(dropped);
+    const dropped = Array.from(e.dataTransfer.files).filter(
+      (f) => f.type === "application/pdf" || f.name.endsWith(".pdf")
+    );
+    if (dropped.length > 0) {
+      setFiles((prev) => [...prev, ...dropped]);
     }
   }
 
@@ -218,6 +229,12 @@ export default function AnalyzePage() {
             Evaluate
           </Link>
           <span className="text-sm font-medium text-white">Analyze</span>
+          <Link
+            href="/obligations"
+            className="text-sm text-zinc-400 hover:text-zinc-200"
+          >
+            Obligations
+          </Link>
           <Link
             href="/admin"
             className="text-sm text-zinc-400 hover:text-zinc-200"
@@ -271,31 +288,86 @@ export default function AnalyzePage() {
               className="mb-4 w-full rounded-xl bg-[#2f2f2f] px-4 py-3 text-sm text-white placeholder-zinc-500 outline-none focus:ring-1 focus:ring-zinc-600"
             />
           ) : (
-            <div
-              onDragOver={(e) => e.preventDefault()}
-              onDrop={handleDrop}
-              onClick={() => fileInputRef.current?.click()}
-              className="mb-4 flex cursor-pointer flex-col items-center justify-center rounded-xl border-2 border-dashed border-zinc-700 bg-[#2f2f2f] px-4 py-12 transition-colors hover:border-zinc-500"
-            >
-              <input
-                ref={fileInputRef}
-                type="file"
-                accept=".pdf"
-                onChange={(e) => setFile(e.target.files?.[0] ?? null)}
-                className="hidden"
-              />
-              {file ? (
-                <p className="text-sm text-zinc-200">{file.name}</p>
-              ) : (
-                <>
+            <div className="mb-4 space-y-3">
+              <div
+                onDragOver={(e) => e.preventDefault()}
+                onDrop={handleDrop}
+                onClick={() => fileInputRef.current?.click()}
+                className="flex cursor-pointer flex-col items-center justify-center rounded-xl border-2 border-dashed border-zinc-700 bg-[#2f2f2f] px-4 py-12 transition-colors hover:border-zinc-500"
+              >
+                <input
+                  ref={fileInputRef}
+                  type="file"
+                  accept=".pdf"
+                  multiple
+                  onChange={(e) => {
+                    const incoming = e.target.files;
+                    if (!incoming) return;
+                    const pdfs = Array.from(incoming).filter(
+                      (f) => f.type === "application/pdf" || f.name.endsWith(".pdf")
+                    );
+                    setFiles((prev) => [...prev, ...pdfs]);
+                    e.target.value = "";
+                  }}
+                  className="hidden"
+                />
+                {files.length === 0 ? (
+                  <>
+                    <p className="text-sm text-zinc-400">
+                      Drop PDF files here or click to browse
+                    </p>
+                    <p className="mt-1 text-xs text-zinc-600">
+                      Multiple .pdf files accepted
+                    </p>
+                  </>
+                ) : (
                   <p className="text-sm text-zinc-400">
-                    Drop a PDF here or click to browse
+                    Click or drop to add more files
                   </p>
-                  <p className="mt-1 text-xs text-zinc-600">
-                    Only .pdf files accepted
-                  </p>
-                </>
+                )}
+              </div>
+
+              {files.length > 0 && (
+                <div className="space-y-2">
+                  {files.map((f, i) => (
+                    <div
+                      key={`${f.name}-${i}`}
+                      className="flex items-center justify-between rounded-lg bg-[#2f2f2f] px-4 py-2"
+                    >
+                      <span className="truncate text-sm text-zinc-300">{f.name}</span>
+                      <button
+                        type="button"
+                        onClick={() => setFiles((prev) => prev.filter((_, idx) => idx !== i))}
+                        className="ml-3 text-xs text-zinc-500 hover:text-red-400"
+                      >
+                        Remove
+                      </button>
+                    </div>
+                  ))}
+                </div>
               )}
+
+              {/* Merge toggle */}
+              <label className="flex items-center gap-3 cursor-pointer">
+                <button
+                  type="button"
+                  role="switch"
+                  aria-checked={merge}
+                  onClick={() => setMerge((v) => !v)}
+                  className={`relative inline-flex h-6 w-11 shrink-0 rounded-full transition-colors ${
+                    merge ? "bg-white" : "bg-zinc-600"
+                  }`}
+                >
+                  <span
+                    className={`pointer-events-none inline-block h-5 w-5 translate-y-0.5 rounded-full bg-zinc-900 transition-transform ${
+                      merge ? "translate-x-[22px]" : "translate-x-0.5"
+                    }`}
+                  />
+                </button>
+                <span className="text-sm text-zinc-400">
+                  Merge into single document (for amendments)
+                </span>
+              </label>
             </div>
           )}
 
@@ -304,7 +376,7 @@ export default function AnalyzePage() {
             disabled={
               loading ||
               (inputMode === "text" && !text.trim()) ||
-              (inputMode === "pdf" && !file)
+              (inputMode === "pdf" && files.length === 0)
             }
             className="rounded-xl bg-white px-6 py-2.5 text-sm font-semibold text-black transition-colors hover:bg-zinc-200 disabled:opacity-30"
           >
@@ -330,7 +402,18 @@ export default function AnalyzePage() {
 
         {/* Results */}
         {analysis && (
-          <div className="mb-10 rounded-xl bg-[#2f2f2f] p-5">
+          <div className="relative mb-10 rounded-xl bg-[#2f2f2f] p-5">
+            <button
+              onClick={() => handleCopy(analysis)}
+              className="absolute right-3 top-3 rounded-md p-1.5 text-zinc-400 hover:bg-zinc-700 hover:text-zinc-200 transition-colors"
+              title="Copy analysis"
+            >
+              {copied ? (
+                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12" /></svg>
+              ) : (
+                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect width="14" height="14" x="8" y="8" rx="2" ry="2" /><path d="M4 16c-1.1 0-2-.9-2-2V4c0-1.1.9-2 2-2h10c1.1 0 2 .9 2 2" /></svg>
+              )}
+            </button>
             <Markdown content={analysis} />
           </div>
         )}
@@ -403,7 +486,18 @@ export default function AnalyzePage() {
                                   Loading...
                                 </p>
                               ) : (
-                                <div className="max-h-96 overflow-y-auto rounded-lg bg-[#2f2f2f] p-4">
+                                <div className="relative max-h-96 overflow-y-auto rounded-lg bg-[#2f2f2f] p-4">
+                                  <button
+                                    onClick={(e) => { e.stopPropagation(); handleCopy(expandedAnalysis); }}
+                                    className="absolute right-3 top-3 rounded-md p-1.5 text-zinc-400 hover:bg-zinc-700 hover:text-zinc-200 transition-colors"
+                                    title="Copy analysis"
+                                  >
+                                    {copied ? (
+                                      <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12" /></svg>
+                                    ) : (
+                                      <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect width="14" height="14" x="8" y="8" rx="2" ry="2" /><path d="M4 16c-1.1 0-2-.9-2-2V4c0-1.1.9-2 2-2h10c1.1 0 2 .9 2 2" /></svg>
+                                    )}
+                                  </button>
                                   <Markdown content={expandedAnalysis} />
                                 </div>
                               )}

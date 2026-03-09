@@ -154,6 +154,12 @@ export default function CircularsPage() {
             Analyze
           </Link>
           <Link
+            href="/obligations"
+            className="text-sm text-zinc-400 hover:text-zinc-200"
+          >
+            Obligations
+          </Link>
+          <Link
             href="/admin"
             className="text-sm text-zinc-400 hover:text-zinc-200"
           >

@@ -50,6 +50,12 @@ export default function AdminPage() {
           >
             Analyze
           </Link>
+          <Link
+            href="/obligations"
+            className="text-sm text-zinc-400 hover:text-zinc-200"
+          >
+            Obligations
+          </Link>
           <span className="text-sm font-medium text-white">Admin</span>
         </div>
       </nav>

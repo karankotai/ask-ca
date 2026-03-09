@@ -28,6 +28,18 @@ interface SessionSummary {
   updatedAt: string;
 }
 
+interface AnalysisSummary {
+  id: string;
+  title: string;
+  createdAt: string;
+}
+
+interface SelectedAnalysis {
+  id: string;
+  title: string;
+  text: string;
+}
+
 export default function Home() {
   const [messages, setMessages] = useState<Message[]>([]);
   const [input, setInput] = useState("");
@@ -35,6 +47,10 @@ export default function Home() {
   const [sidebarOpen, setSidebarOpen] = useState(true);
   const [sessions, setSessions] = useState<SessionSummary[]>([]);
   const [activeSessionId, setActiveSessionId] = useState<number | null>(null);
+  const [analysisMode, setAnalysisMode] = useState(false);
+  const [selectedAnalysis, setSelectedAnalysis] = useState<SelectedAnalysis | null>(null);
+  const [showAnalysisPicker, setShowAnalysisPicker] = useState(false);
+  const [analysisList, setAnalysisList] = useState<AnalysisSummary[]>([]);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
 
@@ -78,6 +94,42 @@ export default function Home() {
     setActiveSessionId(null);
     setMessages([]);
     setInput("");
+    setAnalysisMode(false);
+    setSelectedAnalysis(null);
+  }, []);
+
+  const handleOpenAnalysisPicker = useCallback(async () => {
+    try {
+      const res = await fetch("/api/analyze/history?limit=20");
+      const data = await res.json();
+      setAnalysisList(
+        (data.analyses ?? []).map((a: { id: string; title: string; createdAt: string }) => ({
+          id: a.id,
+          title: a.title,
+          createdAt: a.createdAt,
+        }))
+      );
+      setShowAnalysisPicker(true);
+    } catch {}
+  }, []);
+
+  const handleSelectAnalysis = useCallback(async (id: string, title: string) => {
+    try {
+      const res = await fetch(`/api/analyze/${id}`);
+      if (!res.ok) return;
+      const record = await res.json();
+      setSelectedAnalysis({ id, title, text: record.analysisMarkdown ?? record.analysis ?? "" });
+      setAnalysisMode(true);
+      setMessages([]);
+      setActiveSessionId(null);
+      setShowAnalysisPicker(false);
+    } catch {}
+  }, []);
+
+  const handleExitAnalysisMode = useCallback(() => {
+    setAnalysisMode(false);
+    setSelectedAnalysis(null);
+    setMessages([]);
   }, []);
 
   const handleDeleteSession = useCallback(
@@ -103,9 +155,9 @@ export default function Home() {
     setMessages((prev) => [...prev, { role: "user", content: question }]);
     setLoading(true);
 
-    // Create session lazily on first message
+    // In analysis mode, skip session creation
     let sessionId = activeSessionId;
-    if (!sessionId) {
+    if (!analysisMode && !sessionId) {
       try {
         const res = await fetch("/api/chat/sessions", { method: "POST" });
         const session = await res.json();
@@ -121,11 +173,25 @@ export default function Home() {
     }
 
     try {
-      const res = await fetch("/api/chat", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ question }),
-      });
+      let res: Response;
+      if (analysisMode && selectedAnalysis) {
+        const history = messages.map((m) => ({ role: m.role, content: m.content }));
+        res = await fetch("/api/analyze/chat", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            analysis_text: selectedAnalysis.text,
+            question,
+            history,
+          }),
+        });
+      } else {
+        res = await fetch("/api/chat", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ question }),
+        });
+      }
 
       if (!res.ok || !res.body) {
         throw new Error("Bad response");
@@ -184,8 +250,8 @@ export default function Home() {
         }
       }
 
-      // Save to DB after stream completes
-      if (sessionId) {
+      // Save to DB after stream completes (skip in analysis mode)
+      if (sessionId && !analysisMode) {
         const title = question.slice(0, 50);
         fetch(`/api/chat/sessions/${sessionId}/messages`, {
           method: "POST",
@@ -286,6 +352,12 @@ export default function Home() {
               Analyze
             </Link>
             <Link
+              href="/obligations"
+              className="text-sm text-zinc-400 hover:text-zinc-200"
+            >
+              Obligations
+            </Link>
+            <Link
               href="/admin"
               className="text-sm text-zinc-400 hover:text-zinc-200"
             >
@@ -297,11 +369,36 @@ export default function Home() {
         {/* Messages area */}
         <div className="flex-1 overflow-y-auto">
           <div className="mx-auto max-w-3xl px-4 py-8">
-            {messages.length === 0 && (
-              <div className="flex h-[60vh] items-center justify-center">
+            {messages.length === 0 && !analysisMode && (
+              <div className="flex h-[60vh] flex-col items-center justify-center gap-3">
                 <h1 className="text-3xl font-semibold text-zinc-400">
                   Ask CA
                 </h1>
+                <button
+                  onClick={handleOpenAnalysisPicker}
+                  className="text-sm text-zinc-500 hover:text-zinc-300 transition-colors"
+                >
+                  or chat with a past analysis
+                </button>
+              </div>
+            )}
+            {analysisMode && selectedAnalysis && (
+              <div className="mb-4 flex items-center justify-between rounded-lg bg-[#2f2f2f] px-4 py-2">
+                <div className="flex items-center gap-2 min-w-0">
+                  <span className="shrink-0 text-xs font-medium uppercase tracking-wide text-blue-400">Analysis</span>
+                  <span className="truncate text-sm text-zinc-300">{selectedAnalysis.title}</span>
+                </div>
+                <button
+                  onClick={handleExitAnalysisMode}
+                  className="ml-3 shrink-0 rounded px-2 py-1 text-xs text-zinc-400 hover:bg-zinc-700 hover:text-white transition-colors"
+                >
+                  Exit
+                </button>
+              </div>
+            )}
+            {messages.length === 0 && analysisMode && selectedAnalysis && (
+              <div className="flex h-[50vh] items-center justify-center">
+                <p className="text-sm text-zinc-500">Ask a question about this analysis</p>
               </div>
             )}
             {messages.map((msg, i) => (
@@ -399,7 +496,7 @@ export default function Home() {
               value={input}
               onChange={(e) => setInput(e.target.value)}
               onKeyDown={handleKeyDown}
-              placeholder="Ask a question..."
+              placeholder={analysisMode ? "Ask about this analysis..." : "Ask a question..."}
               rows={1}
               className="flex-1 resize-none bg-transparent text-white placeholder-zinc-500 outline-none"
             />
@@ -419,10 +516,51 @@ export default function Home() {
             </button>
           </form>
           <p className="mt-2 text-center text-xs text-zinc-600">
-            Powered by your RAG pipeline
+            {analysisMode ? "Chatting with analysis" : "Powered by your RAG pipeline"}
           </p>
         </div>
       </div>
+
+      {/* Analysis picker modal */}
+      {showAnalysisPicker && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60">
+          <div className="mx-4 w-full max-w-lg rounded-xl bg-[#2f2f2f] shadow-2xl">
+            <div className="flex items-center justify-between border-b border-zinc-700 px-5 py-4">
+              <h2 className="text-lg font-semibold text-white">Select an Analysis</h2>
+              <button
+                onClick={() => setShowAnalysisPicker(false)}
+                className="rounded p-1 text-zinc-400 hover:bg-zinc-700 hover:text-white transition-colors"
+              >
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <line x1="18" y1="6" x2="6" y2="18" />
+                  <line x1="6" y1="6" x2="18" y2="18" />
+                </svg>
+              </button>
+            </div>
+            <div className="max-h-[60vh] overflow-y-auto p-2">
+              {analysisList.length === 0 && (
+                <p className="px-3 py-8 text-center text-sm text-zinc-500">No analyses found</p>
+              )}
+              {analysisList.map((a) => (
+                <button
+                  key={a.id}
+                  onClick={() => handleSelectAnalysis(a.id, a.title)}
+                  className="w-full rounded-lg px-4 py-3 text-left hover:bg-zinc-600/50 transition-colors"
+                >
+                  <p className="text-sm font-medium text-zinc-200 truncate">{a.title || "Untitled Analysis"}</p>
+                  <p className="mt-0.5 text-xs text-zinc-500">
+                    {new Date(a.createdAt).toLocaleDateString(undefined, {
+                      year: "numeric",
+                      month: "short",
+                      day: "numeric",
+                    })}
+                  </p>
+                </button>
+              ))}
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

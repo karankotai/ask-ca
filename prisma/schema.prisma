@@ -266,6 +266,26 @@ model CircularAnalysis {
   @@map("circular_analyses")
 }
 
+model ExtractedObligation {
+  id            Int       @id @default(autoincrement())
+  docId         Int?      @map("doc_id")
+  title         String    @default("")
+  sourceUrl     String    @default("") @map("source_url")
+  pdfLinks      Json      @default("[]") @map("pdf_links")
+  chainType     String?   @map("chain_type")
+  repealedBy    String?   @map("repealed_by")
+  extraction    Json      @default("{}")
+  modelUsed     String    @default("gpt-4o") @map("model_used")
+  tokenCountIn  Int       @default(0) @map("token_count_in")
+  tokenCountOut Int       @default(0) @map("token_count_out")
+  createdAt     DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt     DateTime  @default(now()) @map("updated_at") @db.Timestamptz(6)
+
+  @@map("extracted_obligations")
+  @@index([docId])
+  @@index([chainType])
+}
+
 enum applet_type {
   code_blocks           @map("code-blocks")
   slope_graph           @map("slope-graph")
