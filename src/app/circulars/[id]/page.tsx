@@ -4,6 +4,9 @@ import { useEffect, useState } from "react";
 import { useParams } from "next/navigation";
 import Link from "next/link";
 import { LoadingDots } from "@/components/admin/shared";
+import LiveDropTimer from "@/components/LiveDropTimer";
+
+const STATIC_FOCUS_CIRCULAR_NUMBER = "MOL/2026/FA-SHIFT-01";
 
 interface CircularDetail {
   id: number;
@@ -15,6 +18,10 @@ interface CircularDetail {
   pdfLinks: string[];
   department: string;
   content: string;
+  aiSummary?: string | null;
+  affectedActs?: string[];
+  severity?: string | null;
+  deadlineDays?: number | null;
 }
 
 export default function CircularDetailPage() {
@@ -22,17 +29,25 @@ export default function CircularDetailPage() {
   const [circular, setCircular] = useState<CircularDetail | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
+  const [liveDropId, setLiveDropId] = useState<number | null>(null);
 
   useEffect(() => {
     async function load() {
       try {
-        const res = await fetch(`/api/circulars/${id}`);
-        const data = await res.json();
-        if (!res.ok) {
+        const [circRes, liveDropRes] = await Promise.all([
+          fetch(`/api/circulars/${id}`),
+          fetch(`/api/demo/live-drop-info`),
+        ]);
+        const data = await circRes.json();
+        if (!circRes.ok) {
           setError(data.error || "Failed to load circular.");
           return;
         }
         setCircular(data.circular);
+        if (liveDropRes.ok) {
+          const ld = await liveDropRes.json();
+          if (ld.liveDrop) setLiveDropId(ld.liveDrop.id);
+        }
       } catch {
         setError("Could not load circular.");
       } finally {
@@ -41,6 +56,8 @@ export default function CircularDetailPage() {
     }
     load();
   }, [id]);
+
+  const isFocusCircular = circular?.circularNumber === STATIC_FOCUS_CIRCULAR_NUMBER;
 
   return (
     <div className="flex min-h-screen flex-col bg-[#212121] text-white">
@@ -133,6 +150,25 @@ export default function CircularDetailPage() {
               )}
             </div>
 
+            {circular.aiSummary && (
+              <div className="rounded-xl bg-blue-950/40 border border-blue-900/40 p-5">
+                <div className="text-xs uppercase tracking-wide text-blue-300 font-semibold mb-2">AI Summary</div>
+                <p className="text-sm text-blue-100 leading-relaxed">{circular.aiSummary}</p>
+                {(circular.severity || circular.deadlineDays) && (
+                  <div className="mt-3 pt-3 border-t border-blue-900/40 flex flex-wrap gap-x-4 gap-y-2 text-xs text-blue-200">
+                    {circular.severity && <span>Severity: <span className="font-medium uppercase">{circular.severity}</span></span>}
+                    {circular.deadlineDays && <span>Deadline: <span className="font-medium">{circular.deadlineDays} days</span></span>}
+                    {circular.affectedActs && circular.affectedActs.length > 0 && <span>Acts: <span className="font-medium">{circular.affectedActs.join(", ")}</span></span>}
+                  </div>
+                )}
+                <div className="mt-3">
+                  <Link href={`/circulars/${circular.id}/impact`} className="inline-block text-sm text-blue-300 hover:text-blue-200">
+                    View client impact →
+                  </Link>
+                </div>
+              </div>
+            )}
+
             {/* PDF viewer / fallback */}
             <PdfViewer
               pdfLinks={circular.pdfLinks}
@@ -140,6 +176,10 @@ export default function CircularDetailPage() {
             />
           </div>
         ) : null}
+
+        {isFocusCircular && liveDropId !== null && (
+          <LiveDropTimer liveDropCircularId={liveDropId} delayMs={60_000} />
+        )}
       </div>
 
       <div className="border-t border-zinc-800 p-4">
