@@ -21,8 +21,13 @@ export default async function CalendarPage() {
   }));
 
   return (
-    <div className="max-w-6xl mx-auto px-6 py-8">
-      <h1 className="text-2xl font-semibold mb-6">Compliance calendar</h1>
+    <div className="screen">
+      <div className="page-row">
+        <div>
+          <div className="page-title">Compliance calendar</div>
+          <div className="page-subtitle">All clients · sorted by due date</div>
+        </div>
+      </div>
       <CalendarTable items={mapped} totalCount={total} />
     </div>
   );

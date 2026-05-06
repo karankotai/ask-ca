@@ -31,68 +31,85 @@ export default async function ClientPage({ params }: { params: Promise<{ id: str
     isFlagged: c.concentrationPct >= 40,
   }));
 
-  const postureClass =
-    client.postureBadge === "HIGH_RISK" ? "bg-red-100 text-red-800 border-red-300" :
-    client.postureBadge === "MEDIUM_RISK" ? "bg-amber-100 text-amber-800 border-amber-300" :
-    "bg-emerald-100 text-emerald-800 border-emerald-300";
-
   return (
-    <div className="max-w-5xl mx-auto px-6 py-8">
-      <div className="flex items-start justify-between mb-2">
+    <div className="screen" style={{ maxWidth: 980, margin: "0 auto" }}>
+      <div className="page-row">
         <div>
-          <h1 className="text-2xl font-semibold">{client.name}</h1>
-          <p className="text-slate-600 text-sm mt-1">
-            {client.sector} · ₹{client.turnoverCr} cr turnover · {client.city}
-          </p>
-          <p className="text-slate-500 text-xs mt-1">{client.ownership}</p>
+          <div className="page-title">{client.name}</div>
+          <div className="page-subtitle">
+            {client.sector} · ₹{client.turnoverCr} cr turnover · {client.city} · {client.ownership}
+          </div>
         </div>
-        <span className={`px-3 py-1 rounded-full text-xs font-medium border ${postureClass}`}>
+        <span className={`posture-badge posture-${client.postureBadge}`}>
           {client.postureBadge.replace("_", " ")}
         </span>
       </div>
 
-      <h2 className="text-lg font-semibold mt-8 mb-3">Counterparty concentration</h2>
-      <ConcentrationChart data={chartData} threshold={40} />
+      <div className="section-heading">Counterparty concentration</div>
+      <div className="chart-card" style={{ marginBottom: 24 }}>
+        <ConcentrationChart data={chartData} threshold={40} />
+      </div>
 
-      <h2 className="text-lg font-semibold mt-8 mb-3">Recent transactions ({client.transactions.length} of {totalTxnCount})</h2>
-      <table className="w-full text-sm">
-        <thead className="bg-slate-50 text-left">
-          <tr>
-            <th className="px-3 py-2">Invoice</th>
-            <th className="px-3 py-2">Counterparty</th>
-            <th className="px-3 py-2">Type</th>
-            <th className="px-3 py-2 text-right">Amount</th>
-            <th className="px-3 py-2">Date</th>
-          </tr>
-        </thead>
-        <tbody>
-          {client.transactions.map((t) => (
-            <tr key={t.id} className="border-t border-slate-100">
-              <td className="px-3 py-2 font-mono text-xs">{t.invoiceNumber}</td>
-              <td className="px-3 py-2">{t.counterparty.name}</td>
-              <td className="px-3 py-2 capitalize">{t.type}</td>
-              <td className="px-3 py-2 text-right">₹{(t.amount / 1e7).toFixed(2)} cr</td>
-              <td className="px-3 py-2 text-slate-500">{t.date.toLocaleDateString("en-IN")}</td>
+      <div className="section-heading">
+        Recent transactions <span style={{ color: "var(--text-light)", fontWeight: 400, fontSize: 12 }}>({client.transactions.length} of {totalTxnCount})</span>
+      </div>
+      <div className="card" style={{ padding: 0, marginBottom: 24 }}>
+        <table className="list-table">
+          <thead>
+            <tr>
+              <th>Invoice</th>
+              <th>Counterparty</th>
+              <th>Type</th>
+              <th style={{ textAlign: "right" }}>Amount</th>
+              <th>Date</th>
             </tr>
-          ))}
-        </tbody>
-      </table>
+          </thead>
+          <tbody>
+            {client.transactions.map((t) => (
+              <tr key={t.id}>
+                <td style={{ fontFamily: "ui-monospace, monospace", fontSize: 12, color: "var(--text-light)" }}>
+                  {t.invoiceNumber}
+                </td>
+                <td className="client">{t.counterparty.name}</td>
+                <td style={{ textTransform: "capitalize" }}>{t.type}</td>
+                <td style={{ textAlign: "right", fontWeight: 600, color: "var(--text-dark)" }}>
+                  ₹{(t.amount / 1e7).toFixed(2)} cr
+                </td>
+                <td style={{ color: "var(--text-light)" }}>{t.date.toLocaleDateString("en-IN")}</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
 
-      <h2 className="text-lg font-semibold mt-8 mb-3">Open compliance items</h2>
-      <div className="border border-slate-200 rounded-lg overflow-hidden">
-        {client.complianceItems.map((item) => (
-          <div key={item.id} className="px-4 py-3 border-b border-slate-100 last:border-b-0 flex items-center justify-between">
-            <div>
-              <div className="font-medium">{item.actionRequired}</div>
-              <div className="text-xs text-slate-500 mt-0.5">{item.actName} · due {item.dueDate.toLocaleDateString("en-IN")}</div>
+      <div className="section-heading">Open compliance items</div>
+      <div className="card" style={{ padding: 0 }}>
+        {client.complianceItems.map((item, idx) => (
+          <div
+            key={item.id}
+            style={{
+              padding: "14px 18px",
+              borderBottom: idx < client.complianceItems.length - 1 ? "1px solid var(--border-light)" : "none",
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "space-between",
+              gap: 12,
+            }}
+          >
+            <div style={{ minWidth: 0 }}>
+              <div style={{ fontSize: 13, fontWeight: 500, color: "var(--text-dark)" }}>
+                {item.actionRequired}
+              </div>
+              <div style={{ fontSize: 11, color: "var(--text-light)", marginTop: 2 }}>
+                {item.actName} · due {item.dueDate.toLocaleDateString("en-IN")}
+              </div>
             </div>
-            <span className={`text-xs px-2 py-1 rounded ${
-              item.status === "done" ? "bg-emerald-100 text-emerald-700" :
-              item.status === "overdue" ? "bg-red-100 text-red-700" :
-              "bg-slate-100 text-slate-700"
-            }`}>{item.status}</span>
+            <span className={`status-pill status-${item.status}`}>{item.status.replace("_", " ")}</span>
           </div>
         ))}
+        {client.complianceItems.length === 0 && (
+          <div className="empty-state">No open items.</div>
+        )}
       </div>
     </div>
   );

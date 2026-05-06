@@ -41,7 +41,7 @@ export default function NotificationBell() {
         }
         setNotifications(next);
       } catch {
-        // ignore polling errors
+        // ignore
       }
     }
 
@@ -55,38 +55,28 @@ export default function NotificationBell() {
 
   return (
     <>
-      <button
-        className="relative p-2 hover:bg-slate-100 rounded"
-        title="Notifications"
-        onClick={() => setLatestToast(null)}
-      >
-        <Bell className="w-5 h-5" />
-        {notifications.length > 0 && (
-          <span className="absolute top-0 right-0 bg-red-500 text-white text-[10px] rounded-full w-4 h-4 flex items-center justify-center">
-            {notifications.length}
-          </span>
-        )}
+      <button className="bell-btn" title="Notifications" onClick={() => setLatestToast(null)}>
+        <Bell size={18} />
+        {notifications.length > 0 && <span className="bell-count">{notifications.length}</span>}
       </button>
 
       {latestToast && (
         <div
           role="alert"
-          className="fixed top-6 right-6 z-50 bg-white border border-slate-300 shadow-lg rounded-lg p-4 max-w-sm cursor-pointer"
+          className="toast"
           onClick={() => {
             const id = latestToast.id;
             setLatestToast(null);
             window.location.href = `/circulars/${id}/impact`;
           }}
         >
-          <div className="flex items-start gap-2">
-            <Bell className="w-5 h-5 text-amber-500 mt-0.5" />
-            <div className="flex-1">
-              <div className="text-xs font-medium text-amber-700 uppercase tracking-wide">New circular detected</div>
-              <div className="text-sm font-semibold mt-1">{latestToast.title}</div>
-              <div className="text-xs text-slate-600 mt-2">
-                {latestToast.affectedCount} of your clients affected
-              </div>
-              <div className="text-xs text-blue-600 mt-2">Click to view impact →</div>
+          <div className="toast-row">
+            <div className="toast-icon"><Bell size={18} /></div>
+            <div style={{ flex: 1 }}>
+              <div className="eyebrow">New circular detected</div>
+              <div className="title">{latestToast.title}</div>
+              <div className="meta">{latestToast.affectedCount} of your clients affected</div>
+              <div className="cta">Click to view impact →</div>
             </div>
           </div>
         </div>

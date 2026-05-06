@@ -3,6 +3,22 @@ import Link from "next/link";
 
 export const dynamic = "force-dynamic";
 
+const SOURCE_TAG: Record<string, string> = {
+  MCA: "tag-mca",
+  CBDT: "tag-cbdt",
+  ICAI: "tag-icai",
+  EPFO: "tag-epfo",
+  GSTN: "tag-gstn",
+  "Min. of Labour": "tag-mol",
+};
+
+const SEV_LABEL: Record<string, string> = {
+  critical: "Critical",
+  high: "High",
+  medium: "Medium",
+  low: "Low",
+};
+
 export default async function DashboardPage() {
   const clients = await prisma.client.findMany({
     include: {
@@ -18,20 +34,32 @@ export default async function DashboardPage() {
   );
 
   const sevenDaysAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000);
-  const recentCirculars = await prisma.scrapedDocument.count({
+  const recentCirculars = await prisma.scrapedDocument.findMany({
     where: {
       crawler: "demo",
       releasedAt: { not: null, gte: sevenDaysAgo, lte: new Date() },
     },
+    orderBy: { releasedAt: "desc" },
   });
 
-  const impacts = await prisma.impactAnalysis.findMany();
+  const impacts = await prisma.impactAnalysis.findMany({ include: { client: true } });
   const totalExposureRupees = impacts.reduce((sum, i) => {
     const payload = i.payload as { totalAmount?: number };
     return sum + (payload.totalAmount ?? 0);
   }, 0);
   const totalExposureCr = (totalExposureRupees / 1e7).toFixed(0);
 
+  // Build per-circular affected-client list for priority cards
+  const affectedByCircular = new Map<number, Array<{ name: string; severity: string }>>();
+  for (const ia of impacts) {
+    const p = ia.payload as { severity: string };
+    if (p.severity === "not_affected") continue;
+    const list = affectedByCircular.get(ia.circularId) ?? [];
+    list.push({ name: ia.client.name, severity: p.severity });
+    affectedByCircular.set(ia.circularId, list);
+  }
+
+  // Sort: items needing attention today (5)
   const allOpenItems = clients
     .flatMap((c) => c.complianceItems.map((i) => ({ client: c, item: i })))
     .sort((a, b) => {
@@ -41,52 +69,100 @@ export default async function DashboardPage() {
     .slice(0, 5);
 
   return (
-    <div className="max-w-6xl mx-auto px-6 py-8">
-      <h1 className="text-2xl font-semibold mb-1">Good morning.</h1>
-      <p className="text-slate-600 mb-6">Here&apos;s what changed since Friday.</p>
-
-      <div className="grid grid-cols-3 gap-4 mb-8">
-        <div className="border border-red-200 bg-red-50 rounded-lg p-4">
-          <div className="text-3xl font-bold text-red-700">{flaggedClients.length}</div>
-          <div className="text-sm text-red-700 mt-1">clients flagged</div>
-        </div>
-        <div className="border border-amber-200 bg-amber-50 rounded-lg p-4">
-          <div className="text-3xl font-bold text-amber-700">{recentCirculars}</div>
-          <div className="text-sm text-amber-700 mt-1">new circulars since Friday</div>
-        </div>
-        <div className="border border-slate-200 bg-slate-50 rounded-lg p-4">
-          <div className="text-3xl font-bold">₹{totalExposureCr} cr</div>
-          <div className="text-sm text-slate-600 mt-1">total exposure across affected transactions</div>
+    <div className="screen">
+      <div className="page-row">
+        <div>
+          <div className="page-title">Good morning.</div>
+          <div className="page-subtitle">Here&apos;s what changed since Friday.</div>
         </div>
       </div>
 
-      <h2 className="text-lg font-semibold mb-3">Needs attention today</h2>
-      <div className="border border-slate-200 rounded-lg overflow-hidden">
-        {allOpenItems.map(({ client, item }) => (
-          <Link
-            key={item.id}
-            href={`/clients/${client.id}`}
-            className="flex items-center justify-between px-4 py-3 border-b border-slate-100 hover:bg-slate-50 last:border-b-0"
-          >
-            <div className="flex items-center gap-3">
-              <span
-                className={`w-2 h-2 rounded-full ${
-                  item.severity === "critical" ? "bg-red-500" :
-                  item.severity === "high" ? "bg-orange-500" :
-                  item.severity === "medium" ? "bg-amber-400" : "bg-slate-300"
-                }`}
-              />
-              <span className="font-medium">{client.name}</span>
-              <span className="text-sm text-slate-600">— {item.actionRequired}</span>
-            </div>
-            <div className="text-sm text-slate-500">
-              {item.actName} · due {item.dueDate.toLocaleDateString("en-IN")}
-            </div>
-          </Link>
-        ))}
-        {allOpenItems.length === 0 && (
-          <div className="px-4 py-8 text-center text-slate-500">No open items.</div>
-        )}
+      <div className="stats">
+        <div className="stat-box clickable">
+          <div className="label">Clients flagged</div>
+          <div className="value">{flaggedClients.length}</div>
+          <div className="sub warn">{flaggedClients.length > 0 ? "Action required" : "All on track"}</div>
+        </div>
+        <div className="stat-box clickable">
+          <div className="label">New circulars (7d)</div>
+          <div className="value">{recentCirculars.length}</div>
+          <div className="sub muted">across {new Set(recentCirculars.flatMap((c) => c.affectedActs)).size} acts</div>
+        </div>
+        <div className="stat-box clickable">
+          <div className="label">Total exposure</div>
+          <div className="value">₹{totalExposureCr} cr</div>
+          <div className="sub muted">across affected transactions</div>
+        </div>
+        <div className="stat-box clickable">
+          <div className="label">Open items</div>
+          <div className="value">{allOpenItems.length > 0 ? clients.reduce((s, c) => s + c.complianceItems.length, 0) : 0}</div>
+          <div className="sub muted">across all clients</div>
+        </div>
+      </div>
+
+      <div className="two-col">
+        <div>
+          <div className="section-heading">Recent circulars</div>
+          {recentCirculars.slice(0, 4).map((c) => {
+            const affected = affectedByCircular.get(c.id) ?? [];
+            const tag = SOURCE_TAG[c.source] ?? "tag-default";
+            return (
+              <Link key={c.id} href={`/circulars/${c.id}`} className="reg-card">
+                <div className="reg-card-top">
+                  <span className={`tag ${tag}`}>{c.source}</span>
+                  <span className={`priority priority-${c.severity ?? "low"}`}>
+                    {SEV_LABEL[c.severity ?? "low"] ?? "Low"}
+                  </span>
+                </div>
+                <div className="reg-card-title">{c.title}</div>
+                <div className="reg-card-meta">
+                  <span>{c.date}</span>
+                  <span>{c.affectedActs.join(", ")}</span>
+                </div>
+                {affected.length > 0 && (
+                  <div className="reg-card-bottom">
+                    <span className="affected-text">{affected.length} client{affected.length !== 1 ? "s" : ""} affected</span>
+                    <div className="client-pills">
+                      {affected.slice(0, 3).map((a, i) => (
+                        <span key={i} className="client-pill">{a.name.split(" ")[0]}</span>
+                      ))}
+                    </div>
+                  </div>
+                )}
+              </Link>
+            );
+          })}
+        </div>
+
+        <div>
+          <div className="section-heading">Needs attention today</div>
+          <div className="deadlines">
+            {allOpenItems.length === 0 && <div className="empty-state">No open items.</div>}
+            {allOpenItems.map(({ client, item }) => {
+              const due = new Date(item.dueDate);
+              const isOverdue = due < new Date();
+              return (
+                <Link
+                  key={item.id}
+                  href={`/clients/${client.id}`}
+                  className={`dl-item ${isOverdue ? "overdue" : ""}`}
+                >
+                  <div className="dl-date">
+                    <div className="day">{due.getDate()}</div>
+                    <div className="mon">{due.toLocaleDateString("en-IN", { month: "short" })}</div>
+                  </div>
+                  <div className="dl-info">
+                    <div className="title">{item.actionRequired}</div>
+                    <div className="sub">{client.name} · {item.actName}</div>
+                  </div>
+                  <span className={`dl-status ${item.status === "done" ? "dl-done" : isOverdue ? "dl-overdue" : "dl-pending"}`}>
+                    {item.severity}
+                  </span>
+                </Link>
+              );
+            })}
+          </div>
+        </div>
       </div>
     </div>
   );

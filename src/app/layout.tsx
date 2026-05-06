@@ -1,22 +1,19 @@
 import type { Metadata } from "next";
-import Link from "next/link";
-import { Geist, Geist_Mono } from "next/font/google";
+import { Inter } from "next/font/google";
 import "./globals.css";
+import Sidebar from "@/components/Sidebar";
+import HeaderTitle from "@/components/HeaderTitle";
 import NotificationBell from "@/components/NotificationBell";
 
-const geistSans = Geist({
-  variable: "--font-geist-sans",
+const inter = Inter({
   subsets: ["latin"],
-});
-
-const geistMono = Geist_Mono({
-  variable: "--font-geist-mono",
-  subsets: ["latin"],
+  weight: ["300", "400", "500", "600", "700", "800"],
+  variable: "--font-inter",
 });
 
 export const metadata: Metadata = {
-  title: "Ask CA",
-  description: "Ask questions using your RAG pipeline",
+  title: "Ask CA — Regulatory Intelligence",
+  description: "Multi-act compliance and circular impact analysis for CA firms",
 };
 
 export default function RootLayout({
@@ -26,21 +23,19 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en">
-      <body
-        className={`${geistSans.variable} ${geistMono.variable} antialiased`}
-      >
-        <header className="border-b border-slate-200 px-6 py-3 flex items-center justify-between">
-          <div className="flex items-center gap-6">
-            <Link href="/dashboard" className="font-semibold">Ask CA</Link>
-            <nav className="flex items-center gap-4 text-sm text-slate-600">
-              <Link href="/dashboard" className="hover:text-slate-900">Dashboard</Link>
-              <Link href="/circulars" className="hover:text-slate-900">Circulars</Link>
-              <Link href="/calendar" className="hover:text-slate-900">Calendar</Link>
-            </nav>
-          </div>
-          <NotificationBell />
-        </header>
-        {children}
+      <body className={inter.className}>
+        <div className="app">
+          <Sidebar />
+          <main className="main">
+            <header className="header">
+              <HeaderTitle />
+              <div className="header-actions">
+                <NotificationBell />
+              </div>
+            </header>
+            <div className="content">{children}</div>
+          </main>
+        </div>
       </body>
     </html>
   );

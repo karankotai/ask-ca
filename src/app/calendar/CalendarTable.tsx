@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { Check } from "lucide-react";
 
 type Item = {
   id: string;
@@ -40,65 +41,52 @@ export default function CalendarTable({ items: initialItems, totalCount }: Props
   }
 
   return (
-    <>
-      <div className="flex gap-3 mb-4">
-        <select
-          value={filterClient}
-          onChange={(e) => setFilterClient(e.target.value)}
-          className="border border-slate-300 rounded px-2 py-1 text-sm"
-        >
+    <div className="card" style={{ padding: 0 }}>
+      <div className="filters" style={{ padding: "16px 20px", marginBottom: 0, borderBottom: "1px solid var(--border)" }}>
+        <select value={filterClient} onChange={(e) => setFilterClient(e.target.value)}>
           <option value="all">All clients</option>
           {clients.map((c) => <option key={c} value={c}>{c}</option>)}
         </select>
-        <select
-          value={filterStatus}
-          onChange={(e) => setFilterStatus(e.target.value)}
-          className="border border-slate-300 rounded px-2 py-1 text-sm"
-        >
+        <select value={filterStatus} onChange={(e) => setFilterStatus(e.target.value)}>
           <option value="all">All statuses</option>
           <option value="pending">Pending</option>
           <option value="in_progress">In progress</option>
           <option value="done">Done</option>
           <option value="overdue">Overdue</option>
         </select>
-        <div className="ml-auto text-sm text-slate-600 self-center">
-          {doneCount} of {totalCount} items complete this month
+        <div className="progress">
+          <strong style={{ color: "var(--text-dark)" }}>{doneCount}</strong> of {totalCount} items complete this month
         </div>
       </div>
 
-      <table className="w-full text-sm">
-        <thead className="bg-slate-50 text-left">
+      <table className="list-table">
+        <thead>
           <tr>
-            <th className="px-3 py-2">Client</th>
-            <th className="px-3 py-2">Act</th>
-            <th className="px-3 py-2">Action required</th>
-            <th className="px-3 py-2">Due</th>
-            <th className="px-3 py-2">Status</th>
+            <th>Client</th>
+            <th>Act</th>
+            <th>Action required</th>
+            <th>Due</th>
+            <th style={{ textAlign: "right" }}>Status</th>
           </tr>
         </thead>
         <tbody>
           {filtered.map((i) => (
-            <tr key={i.id} className={`border-t border-slate-100 ${i.severity === "critical" ? "bg-red-50" : ""}`}>
-              <td className="px-3 py-2 font-medium">{i.clientName}</td>
-              <td className="px-3 py-2 text-slate-600">{i.actName}</td>
-              <td className="px-3 py-2">{i.actionRequired}</td>
-              <td className="px-3 py-2 text-slate-500">{new Date(i.dueDate).toLocaleDateString("en-IN")}</td>
-              <td className="px-3 py-2">
-                <button
-                  onClick={() => toggle(i.id)}
-                  className={`text-xs px-2 py-1 rounded transition-colors ${
-                    i.status === "done" ? "bg-emerald-100 text-emerald-700" :
-                    i.status === "overdue" ? "bg-red-100 text-red-700" :
-                    "bg-slate-100 text-slate-700 hover:bg-slate-200"
-                  }`}
-                >
-                  {i.status === "done" ? "✓ done" : i.status}
+            <tr key={i.id} className={i.severity === "critical" ? "critical" : ""}>
+              <td className="client">{i.clientName}</td>
+              <td>{i.actName}</td>
+              <td>{i.actionRequired}</td>
+              <td style={{ color: "var(--text-light)", whiteSpace: "nowrap" }}>
+                {new Date(i.dueDate).toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "numeric" })}
+              </td>
+              <td style={{ textAlign: "right" }}>
+                <button onClick={() => toggle(i.id)} className={`status-pill status-${i.status}`}>
+                  {i.status === "done" ? <><Check size={11} /> done</> : i.status.replace("_", " ")}
                 </button>
               </td>
             </tr>
           ))}
         </tbody>
       </table>
-    </>
+    </div>
   );
 }
