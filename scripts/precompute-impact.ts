@@ -1,130 +1,103 @@
+// "Precompute" used to run Anthropic offline for each (circular × client) pair.
+// We now load pre-curated payloads from src/lib/demo/impact-payloads.ts and
+// insert them directly. This is the same architecture as the offline-AI flow —
+// just authored inline rather than via a one-shot API call. The validators
+// from src/lib/impact/validate.ts and the Zod schema still gate every payload
+// before it lands in the DB, so the integrity guarantees are unchanged.
+
 import { prisma } from "../src/lib/prisma";
-import { runImpactAnalysis } from "../src/lib/impact/run";
-import { runCommDraft } from "../src/lib/impact/run-comm";
+import { IMPACT_CELLS } from "../src/lib/demo/impact-payloads";
+import { ImpactAnalysisPayloadSchema } from "../src/lib/impact/schema";
+import { validateTransactionIds } from "../src/lib/impact/validate";
 
 async function main() {
-  console.log("[precompute] Loading clients and circulars...");
-  const clients = await prisma.client.findMany({
-    include: { counterparties: true, transactions: { include: { counterparty: true } } },
-  });
+  console.log("[precompute] Loading clients, circulars, and transactions...");
+  const clients = await prisma.client.findMany();
   const circulars = await prisma.scrapedDocument.findMany({
     where: { crawler: "demo" },
+    select: { id: true, circularNumber: true, title: true },
+  });
+  const transactions = await prisma.transaction.findMany({
+    select: { id: true, clientId: true },
   });
 
-  console.log(`[precompute] ${clients.length} clients × ${circulars.length} circulars = ${clients.length * circulars.length} pairs`);
+  const transactionsByClient = new Map<string, Set<string>>();
+  for (const t of transactions) {
+    const set = transactionsByClient.get(t.clientId) ?? new Set<string>();
+    set.add(t.id);
+    transactionsByClient.set(t.clientId, set);
+  }
 
+  const clientById = new Map(clients.map((c) => [c.id, c]));
+  const circularByNumber = new Map(circulars.map((c) => [c.circularNumber, c]));
+
+  console.log("[precompute] Wiping previous analyses and comms...");
   await prisma.draftComm.deleteMany({});
   await prisma.impactAnalysis.deleteMany({});
 
-  for (const circular of circulars) {
-    for (const client of clients) {
-      console.log(`[precompute] Impact: ${circular.title.slice(0, 40)}... × ${client.name}`);
+  let okCount = 0;
+  let skippedCount = 0;
+  let commCount = 0;
 
-      const validTxnIds = new Set(client.transactions.map((t) => t.id));
-      const txnsForPrompt = client.transactions.map((t) => ({
-        id: t.id,
-        invoiceNumber: t.invoiceNumber,
-        amount: t.amount,
-        date: t.date.toISOString().slice(0, 10),
-        type: t.type as "purchase" | "sale",
-        description: t.description,
-        counterpartyName: t.counterparty.name,
-      }));
+  for (const cell of IMPACT_CELLS) {
+    const client = clientById.get(cell.clientId);
+    const circular = circularByNumber.get(cell.circularNumber);
 
-      const cpsForPrompt = client.counterparties.map((c) => ({
-        name: c.name,
-        type: c.type as "vendor" | "customer",
-        concentrationPct: c.concentrationPct,
-        isFormallyRelated: c.isFormallyRelated,
-      }));
+    if (!client) {
+      console.warn(`[precompute] Skipping cell — client not found: ${cell.clientId}`);
+      skippedCount++;
+      continue;
+    }
+    if (!circular) {
+      console.warn(`[precompute] Skipping cell — circular not found: ${cell.circularNumber}`);
+      skippedCount++;
+      continue;
+    }
 
-      try {
-        const impact = await runImpactAnalysis({
-          circular: {
-            title: circular.title,
-            source: circular.source,
-            date: circular.date,
-            content: circular.content,
-            affectedActs: circular.affectedActs,
-          },
-          client: {
-            id: client.id,
-            name: client.name,
-            sector: client.sector,
-            turnoverCr: client.turnoverCr,
-            ownership: client.ownership,
-            city: client.city,
-          },
-          counterparties: cpsForPrompt,
-          transactions: txnsForPrompt,
-          validTransactionIds: validTxnIds,
-        });
+    // Validate the payload against the Zod schema
+    const schemaResult = ImpactAnalysisPayloadSchema.safeParse(cell.payload);
+    if (!schemaResult.success) {
+      console.error(`[precompute] Schema FAILED for ${cell.circularNumber} × ${client.name}:`, schemaResult.error.message);
+      skippedCount++;
+      continue;
+    }
 
-        await prisma.impactAnalysis.create({
-          data: {
-            circularId: circular.id,
-            clientId: client.id,
-            payload: impact as object,
-            validatedAt: new Date(),
-          },
-        });
+    // Validate transaction IDs
+    const validIds = transactionsByClient.get(cell.clientId) ?? new Set<string>();
+    const txnResult = validateTransactionIds(schemaResult.data, validIds);
+    if (txnResult.ok === false) {
+      console.error(`[precompute] Transaction-ID FAILED for ${cell.circularNumber} × ${client.name}:`, txnResult.missingIds);
+      skippedCount++;
+      continue;
+    }
 
-        console.log(`  ✓ Impact stored. Severity=${impact.severity}, count=${impact.totalCount}`);
+    await prisma.impactAnalysis.create({
+      data: {
+        circularId: circular.id,
+        clientId: client.id,
+        payload: schemaResult.data as object,
+        validatedAt: new Date(),
+      },
+    });
+    okCount++;
+    console.log(`  ✓ ${cell.circularNumber} × ${client.name} (severity=${schemaResult.data.severity}, count=${schemaResult.data.totalCount})`);
 
-        if (impact.severity === "not_affected") {
-          console.log(`  - Skipping comm (not_affected)`);
-          continue;
-        }
-
-        const deadline = circular.deadlineDays
-          ? new Date(Date.now() + circular.deadlineDays * 24 * 60 * 60 * 1000).toLocaleDateString("en-IN", { day: "numeric", month: "long", year: "numeric" })
-          : "as soon as practicable";
-
-        const comm = await runCommDraft({
-          circular: {
-            title: circular.title,
-            source: circular.source,
-            date: circular.date,
-            content: circular.content,
-            affectedActs: circular.affectedActs,
-          },
-          client: {
-            id: client.id,
-            name: client.name,
-            sector: client.sector,
-            turnoverCr: client.turnoverCr,
-            ownership: client.ownership,
-            city: client.city,
-          },
-          impactSummary: impact.summary,
-          impactRationale: impact.rationale,
-          affectedCount: impact.totalCount,
-          totalAmount: impact.totalAmount,
-          deadline,
-        });
-
-        await prisma.draftComm.create({
-          data: {
-            circularId: circular.id,
-            clientId: client.id,
-            subject: comm.subject,
-            body: comm.body,
-            channel: comm.channel,
-            status: "draft",
-          },
-        });
-        console.log(`  ✓ Comm stored.`);
-      } catch (e) {
-        console.error(`  ✗ FAILED:`, e);
-      }
+    if (cell.comm) {
+      await prisma.draftComm.create({
+        data: {
+          circularId: circular.id,
+          clientId: client.id,
+          subject: cell.comm.subject,
+          body: cell.comm.body,
+          channel: cell.comm.channel,
+          status: "draft",
+        },
+      });
+      commCount++;
     }
   }
 
-  const counts = {
-    impactAnalyses: await prisma.impactAnalysis.count(),
-    draftComms: await prisma.draftComm.count(),
-  };
-  console.log("[precompute] Done. Counts:", counts);
+  console.log(`[precompute] Done. Inserted: ${okCount} ImpactAnalysis, ${commCount} DraftComm. Skipped: ${skippedCount}.`);
 }
 
 main()

@@ -3,13 +3,11 @@
 ## One-time setup
 
 1. `npm install`
-2. Ensure `.env` has:
-   - `DATABASE_URL=...` (shared Neon Postgres)
-   - `ANTHROPIC_API_KEY=sk-ant-...` (only required for the precompute step)
+2. Ensure `.env` has `DATABASE_URL=...` (shared Neon Postgres). No Anthropic key needed.
 3. Apply the additive SQL once: `psql "$DATABASE_URL" < prisma/demo-migration.sql`
    - This is purely additive — adds `demo_*` tables and a few columns to `scraped_documents`. No drops.
-4. `npm run demo:seed` — populates 3 clients, 9 counterparties, ~63 transactions, 7 circulars, 10 baseline compliance items.
-5. `npm run demo:precompute` — runs Anthropic offline for every (circular × client) pair (~1-3 min).
+4. `npm run demo:seed` — populates 3 clients, 9 counterparties, ~63 transactions, 6 circulars, 10 baseline compliance items.
+5. `npm run demo:precompute` — inserts the curated impact analyses + comm drafts into the DB (instant; no API calls).
 
 ## Pre-demo checklist
 
@@ -52,6 +50,6 @@ Run a full round-trip rehearsal:
 
 ## Architecture notes
 
-- **Cached AI:** all impact analyses + comm drafts are precomputed offline and stored in `demo_impact_analyses` / `demo_draft_comms`. Demo-time UI loads these from cache; no live AI calls during the demo.
+- **Cached AI:** all impact analyses + comm drafts are pre-curated in `src/lib/demo/impact-payloads.ts` and inserted into `demo_impact_analyses` / `demo_draft_comms` by `npm run demo:precompute`. Demo-time UI loads these from cache; no live AI calls during the demo. The Zod schema and transaction-ID validator still gate every payload at insert time.
 - **Live trigger:** `Circular.releasedAt` is far-future for the live-drop circular. The static focus page (`/circulars/<MOL/2026/FA-SHIFT-01>`) arms a 60-sec client-side timer that calls `/api/demo/release/:id`, flipping `releasedAt` to now. The notification poll picks it up within ~5 sec.
 - **Reset:** `/api/demo/reset` (or `npm run demo:reset`) restores baseline — `releasedAt` to year 3000, deletes ComplianceItems created from live-drop, resets DraftComm statuses, restores the PF item to pending.
