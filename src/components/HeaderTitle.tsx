@@ -18,5 +18,5 @@ export default function HeaderTitle() {
   for (const [pattern, title] of TITLES) {
     if (pattern.test(pathname)) return <span className="header-title">{title}</span>;
   }
-  return <span className="header-title">Ask CA</span>;
+  return <span className="header-title">RegMitra</span>;
 }

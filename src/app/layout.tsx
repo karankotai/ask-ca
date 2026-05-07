@@ -12,7 +12,7 @@ const inter = Inter({
 });
 
 export const metadata: Metadata = {
-  title: "Ask CA — Regulatory Intelligence",
+  title: "RegMitra — Regulatory Intelligence",
   description: "Multi-act compliance and circular impact analysis for CA firms",
 };
 

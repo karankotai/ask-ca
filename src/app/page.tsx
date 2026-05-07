@@ -372,7 +372,7 @@ export default function Home() {
             {messages.length === 0 && !analysisMode && (
               <div className="flex h-[60vh] flex-col items-center justify-center gap-3">
                 <h1 className="text-3xl font-semibold text-zinc-400">
-                  Ask CA
+                  RegMitra
                 </h1>
                 <button
                   onClick={handleOpenAnalysisPicker}

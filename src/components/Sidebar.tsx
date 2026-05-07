@@ -27,7 +27,7 @@ export default function Sidebar() {
   return (
     <aside className="sidebar">
       <div className="sidebar-brand">
-        <h1>Ask CA</h1>
+        <h1>RegMitra</h1>
         <p>Regulatory Intelligence</p>
       </div>
       <nav className="sidebar-nav">
