@@ -18,7 +18,7 @@ const NAV: NavItem[] = [
 ];
 
 const INTEL: NavItem[] = [
-  { href: "/comms/new", label: "Briefings", icon: MessageSquare, match: (p) => p.startsWith("/comms") },
+  { href: "/briefings", label: "Briefings", icon: MessageSquare, match: (p) => p.startsWith("/briefings") || p.startsWith("/comms") },
 ];
 
 export default function Sidebar() {

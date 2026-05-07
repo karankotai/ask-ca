@@ -8,6 +8,7 @@ const TITLES: Array<[RegExp, string]> = [
   [/^\/circulars\/[^/]+\/impact/, "Client Impact Analysis"],
   [/^\/circulars\/[^/]+/, "Circular Detail"],
   [/^\/circulars/, "Circulars"],
+  [/^\/briefings/, "Briefings"],
   [/^\/comms\//, "Compliance Advisory"],
   [/^\/calendar/, "Compliance Calendar"],
 ];
