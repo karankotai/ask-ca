@@ -235,6 +235,17 @@ model ScrapedDocument {
   createdAt            DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
   updatedAt            DateTime  @default(now()) @map("updated_at") @db.Timestamptz(6)
 
+  affectedActs   String[]   @default([])  @map("affected_acts")
+  severity       String?    @map("severity")
+  deadlineDays   Int?       @map("deadline_days")
+  releasedAt     DateTime?  @map("released_at") @db.Timestamptz(6)
+  isLiveDrop     Boolean    @default(false) @map("is_live_drop")
+  aiSummary      String?    @map("ai_summary")
+
+  impactAnalyses  ImpactAnalysis[]
+  complianceItems ComplianceItem[]
+  draftComms      DraftComm[]
+
   @@map("scraped_documents")
   @@index([crawler])
   @@index([source])
@@ -292,6 +303,112 @@ model ExtractedObligation {
   @@map("extracted_obligations")
   @@index([docId])
   @@index([chainType])
+}
+
+model Client {
+  id            String           @id @default(cuid())
+  name          String
+  sector        String
+  turnoverCr    Float
+  ownership     String
+  city          String
+  postureBadge  String           @default("LOW_RISK")
+  createdAt     DateTime         @default(now())
+
+  counterparties  Counterparty[]
+  transactions    Transaction[]
+  impactAnalyses  ImpactAnalysis[]
+  complianceItems ComplianceItem[]
+  draftComms      DraftComm[]
+
+  @@map("demo_clients")
+}
+
+model Counterparty {
+  id                 String        @id @default(cuid())
+  clientId           String
+  name               String
+  type               String
+  concentrationPct   Float
+  isFormallyRelated  Boolean       @default(false)
+
+  client             Client        @relation(fields: [clientId], references: [id], onDelete: Cascade)
+  transactions       Transaction[]
+
+  @@index([clientId])
+  @@map("demo_counterparties")
+}
+
+model Transaction {
+  id              String       @id @default(cuid())
+  clientId        String
+  counterpartyId  String
+  invoiceNumber   String
+  amount          Float
+  date            DateTime
+  type            String
+  description     String       @default("")
+
+  client          Client       @relation(fields: [clientId], references: [id], onDelete: Cascade)
+  counterparty    Counterparty @relation(fields: [counterpartyId], references: [id], onDelete: Cascade)
+
+  @@index([clientId])
+  @@index([counterpartyId])
+  @@map("demo_transactions")
+}
+
+model ImpactAnalysis {
+  id              String     @id @default(cuid())
+  circularId      Int
+  clientId        String
+  payload         Json
+  lastComputedAt  DateTime   @default(now())
+  validatedAt     DateTime?
+
+  client          Client          @relation(fields: [clientId], references: [id], onDelete: Cascade)
+  scrapedDocument ScrapedDocument @relation(fields: [circularId], references: [id], onDelete: Cascade)
+
+  @@unique([circularId, clientId])
+  @@index([circularId])
+  @@map("demo_impact_analyses")
+}
+
+model ComplianceItem {
+  id              String   @id @default(cuid())
+  clientId        String
+  circularId      Int?
+  actName         String
+  actionRequired  String
+  dueDate         DateTime
+  status          String   @default("pending")
+  severity        String   @default("medium")
+  createdAt       DateTime @default(now())
+
+  client          Client           @relation(fields: [clientId], references: [id], onDelete: Cascade)
+  scrapedDocument ScrapedDocument? @relation(fields: [circularId], references: [id], onDelete: SetNull)
+
+  @@index([clientId])
+  @@index([dueDate])
+  @@map("demo_compliance_items")
+}
+
+model DraftComm {
+  id          String   @id @default(cuid())
+  clientId    String
+  circularId  Int
+  subject     String
+  body        String
+  channel     String   @default("email")
+  status      String   @default("draft")
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @default(now()) @updatedAt
+
+  client          Client          @relation(fields: [clientId], references: [id], onDelete: Cascade)
+  scrapedDocument ScrapedDocument @relation(fields: [circularId], references: [id], onDelete: Cascade)
+
+  @@unique([circularId, clientId])
+  @@index([clientId])
+  @@map("demo_draft_comms")
 }
 
 enum applet_type {
