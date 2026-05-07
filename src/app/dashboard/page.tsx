@@ -86,7 +86,7 @@ export default async function DashboardPage() {
         <div className="stat-box clickable">
           <div className="label">New circulars (7d)</div>
           <div className="value">{recentCirculars.length}</div>
-          <div className="sub muted">across {new Set(recentCirculars.flatMap((c) => c.affectedActs)).size} acts</div>
+          <div className="sub muted">across {new Set(recentCirculars.flatMap((c) => c.affectedActs)).size} act{new Set(recentCirculars.flatMap((c) => c.affectedActs)).size !== 1 ? "s" : ""}</div>
         </div>
         <div className="stat-box clickable">
           <div className="label">Total exposure</div>
@@ -155,7 +155,7 @@ export default async function DashboardPage() {
                     <div className="title">{item.actionRequired}</div>
                     <div className="sub">{client.name} · {item.actName}</div>
                   </div>
-                  <span className={`dl-status ${item.status === "done" ? "dl-done" : isOverdue ? "dl-overdue" : "dl-pending"}`}>
+                  <span className={`priority priority-${item.severity}`}>
                     {item.severity}
                   </span>
                 </Link>

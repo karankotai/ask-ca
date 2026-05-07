@@ -1,7 +1,6 @@
 import { prisma } from "@/lib/prisma";
 import { notFound } from "next/navigation";
 import Link from "next/link";
-import { FileText } from "lucide-react";
 import CommsEditor from "./CommsEditor";
 
 export const dynamic = "force-dynamic";
@@ -36,33 +35,22 @@ export default async function CommsPage({ params }: { params: Promise<{ id: stri
   const today = new Date().toLocaleDateString("en-IN", { day: "numeric", month: "long", year: "numeric" });
 
   return (
-    <div className="screen" style={{ maxWidth: 760, margin: "0 auto" }}>
+    <div className="screen" style={{ maxWidth: 820, margin: "0 auto" }}>
       <div style={{ marginBottom: 18 }}>
         <Link href={`/circulars/${ia.circularId}/impact?client=${ia.clientId}`} style={{ fontSize: 13, color: "var(--accent)", textDecoration: "none" }}>
           ← Back to impact view
         </Link>
       </div>
 
-      <div className="advisory-card">
-        <div className="advisory-header">
-          <div className="advisory-icon">
-            <FileText size={22} />
-          </div>
-          <div>
-            <div className="advisory-title">Compliance Advisory</div>
-            <div className="advisory-sub">Auto-generated · Ready for review</div>
-          </div>
-          <CommsEditor
-            commId={comm.id}
-            clientName={ia.client.name}
-            circularTitle={ia.scrapedDocument.title}
-            today={today}
-            initialSubject={comm.subject}
-            initialBody={comm.body}
-            initialChannel={comm.channel}
-          />
-        </div>
-      </div>
+      <CommsEditor
+        commId={comm.id}
+        clientName={ia.client.name}
+        circularTitle={ia.scrapedDocument.title}
+        today={today}
+        initialSubject={comm.subject}
+        initialBody={comm.body}
+        initialChannel={comm.channel}
+      />
 
       {siblings.length > 0 && (
         <div style={{ marginTop: 32 }}>

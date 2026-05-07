@@ -871,6 +871,50 @@ body {
 }
 .channel-toggle button.active { background: var(--bg-white); color: var(--accent); box-shadow: var(--shadow-sm); }
 
+/* Deadline list (dashboard right column) */
+.deadlines { display: flex; flex-direction: column; gap: 8px; }
+
+.dl-item {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 12px 16px;
+  background: var(--bg-white);
+  transition: all 0.15s ease;
+  cursor: pointer;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow-sm);
+  text-decoration: none;
+  color: inherit;
+}
+
+.dl-item:hover { background: var(--accent-bg); border-color: var(--accent-light); }
+.dl-item.overdue { border-left: 3px solid var(--danger); }
+.dl-item.overdue:hover { background: var(--danger-bg); }
+
+.dl-date { text-align: center; min-width: 42px; flex-shrink: 0; }
+.dl-date .day { font-size: 18px; font-weight: 700; color: var(--text-dark); display: block; line-height: 1.1; }
+.dl-date .mon { font-size: 9px; font-weight: 600; color: var(--text-light); text-transform: uppercase; display: block; }
+
+.dl-info { flex: 1; min-width: 0; }
+.dl-info .title { font-size: 13px; font-weight: 500; color: var(--text-dark); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.dl-info .sub { font-size: 11px; color: var(--text-light); margin-top: 1px; }
+
+.dl-status {
+  font-size: 10px;
+  font-weight: 600;
+  padding: 4px 10px;
+  border-radius: 12px;
+  text-transform: uppercase;
+  letter-spacing: 0.3px;
+  flex-shrink: 0;
+}
+
+.dl-pending { background: var(--warning-bg); color: var(--warning); }
+.dl-overdue { background: var(--danger-bg); color: var(--danger); }
+.dl-done { background: var(--success-bg); color: var(--success); }
+
 /* Required actions list */
 .action-list { padding: 0; margin: 0; list-style: none; }
 .action-list li {
