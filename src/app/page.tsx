@@ -53,7 +53,9 @@ export default function Home() {
   const [analysisList, setAnalysisList] = useState<AnalysisSummary[]>([]);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
-
+  useEffect(()=> {
+    redirect("/dashboard")
+  },[]);
   // Fetch sessions on mount
   useEffect(() => {
     fetch("/api/chat/sessions")
