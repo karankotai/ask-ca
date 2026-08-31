@@ -33,7 +33,8 @@ export default async function Home() {
     c.complianceItems.some((i) => i.severity === "critical" || i.severity === "high"),
   );
 
-  const sevenDaysAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000);
+  const now = new Date();
+  const sevenDaysAgo = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
   const recentCirculars = await prisma.scrapedDocument.findMany({
     where: {
       crawler: "demo",

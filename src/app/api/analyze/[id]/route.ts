@@ -1,22 +1,32 @@
-import { NextRequest, NextResponse } from "next/server";
+import { NextRequest } from "next/server";
 import { prisma } from "@/lib/prisma";
+import { withAuth, NextResponse, parseNumericId } from "@/lib/auth";
+import { logError } from "@/lib/logging";
 
 export async function GET(
-  _req: NextRequest,
-  { params }: { params: Promise<{ id: string }> }
+  req: NextRequest,
+  { params }: { params: Promise<{ id: string }> },
 ) {
-  try {
-    const { id } = await params;
-    const record = await prisma.circularAnalysis.findUnique({ where: { id } });
-
-    if (!record) {
-      return NextResponse.json({ error: "Not found" }, { status: 404 });
-    }
-
-    return NextResponse.json(record);
-  } catch (err) {
-    const message = err instanceof Error ? err.message : "Failed to fetch analysis";
-    console.error("Analysis detail error:", message);
-    return NextResponse.json({ error: message }, { status: 500 });
-  }
+  return withAuth(
+    req,
+    { role: "user" },
+    async ({ params: _p }) => {
+      const id = (_p as { id: string }).id;
+      try {
+        const record = await prisma.circularAnalysis.findUnique({
+          where: { id },
+        });
+        if (!record) {
+          return NextResponse.json({ error: "Not found" }, { status: 404 });
+        }
+        return NextResponse.json(record);
+      } catch (err) {
+        logError("analyze.detail.fetch", err);
+        const message =
+          err instanceof Error ? err.message : "Failed to fetch analysis";
+        return NextResponse.json({ error: message }, { status: 500 });
+      }
+    },
+    params as unknown as Promise<Record<string, unknown>>,
+  );
 }

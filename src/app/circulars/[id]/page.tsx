@@ -53,7 +53,7 @@ export default async function CircularDetailPage({ params }: { params: Promise<{
   const ago = timeAgo(releasedAt);
 
   const deadline = circular.deadlineDays
-    ? new Date(Date.now() + circular.deadlineDays * 24 * 60 * 60 * 1000).toLocaleDateString("en-IN", {
+    ? new Date(new Date().getTime() + circular.deadlineDays * 24 * 60 * 60 * 1000).toLocaleDateString("en-IN", {
         day: "numeric", month: "short", year: "numeric",
       })
     : "—";

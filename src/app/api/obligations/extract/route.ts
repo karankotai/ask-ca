@@ -1,30 +1,35 @@
-import { NextRequest, NextResponse } from "next/server";
-
-const RAG_URL = process.env.RAG_URL!;
+import { NextRequest } from "next/server";
+import { env } from "@/lib/env";
+import { logError } from "@/lib/logging";
+import { withAuth, NextResponse } from "@/lib/auth";
+import { ObligationsExtractSchema } from "@/lib/validation";
 
 export async function POST(req: NextRequest) {
-  try {
-    const body = await req.json();
-
-    const res = await fetch(`${RAG_URL}/obligations/extract`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(body),
-    });
-
-    const data = await res.json();
-    if (!res.ok) {
-      return NextResponse.json(
-        { error: data.detail || "Extraction failed." },
-        { status: res.status }
-      );
-    }
-
-    return NextResponse.json(data);
-  } catch {
-    return NextResponse.json(
-      { error: "Could not connect to backend at " + RAG_URL },
-      { status: 502 }
-    );
-  }
+  return withAuth(
+    req,
+    { role: "user", bodySchema: ObligationsExtractSchema },
+    async ({ body }) => {
+      try {
+        const res = await fetch(`${env.RAG_URL}/obligations/extract`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(body),
+        });
+        const data = await res.json();
+        if (!res.ok) {
+          return NextResponse.json(
+            { error: data.detail || "Extraction failed." },
+            { status: res.status },
+          );
+        }
+        return NextResponse.json(data);
+      } catch (e) {
+        logError("obligations.extract.fetch", e);
+        return NextResponse.json(
+          { error: "Upstream service unavailable." },
+          { status: 502 },
+        );
+      }
+    },
+  );
 }

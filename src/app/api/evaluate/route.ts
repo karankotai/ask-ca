@@ -1,66 +1,36 @@
-import { NextRequest, NextResponse } from "next/server";
+import { NextRequest } from "next/server";
 import { prisma } from "@/lib/prisma";
+import { withAuth, NextResponse } from "@/lib/auth";
+import { logError } from "@/lib/logging";
 
-const RAG_URL = process.env.RAG_URL!;
+export async function GET(req: NextRequest) {
+  return withAuth(req, { role: "user" }, async ({ req: r }) => {
+    try {
+      const url = r.nextUrl;
+      const page = Math.max(Number(url.searchParams.get("page")) || 1, 1);
+      const limit = Math.min(Number(url.searchParams.get("limit")) || 20, 100);
+      const offset = (page - 1) * limit;
 
-export async function POST(req: NextRequest) {
-  const body = await req.json();
+      const [total, items] = await Promise.all([
+        prisma.evalRun.count(),
+        prisma.evalRun.findMany({
+          orderBy: { createdAt: "desc" },
+          skip: offset,
+          take: limit,
+        }),
+      ]);
 
-  try {
-    const res = await fetch(`${RAG_URL}/evaluate`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(body),
-    });
-
-    if (!res.ok) {
-      const text = await res.text();
-      return NextResponse.json(
-        { error: text || "RAG service returned an error." },
-        { status: res.status }
-      );
+      return NextResponse.json({
+        runs: items,
+        page,
+        totalPages: Math.ceil(total / limit),
+        total,
+      });
+    } catch (err) {
+      logError("evaluate.history.fetch", err);
+      const message =
+        err instanceof Error ? err.message : "Failed to fetch history";
+      return NextResponse.json({ error: message }, { status: 500 });
     }
-
-    const data = await res.json();
-    const r = data.result;
-
-    // Persist to PostgreSQL so it shows up in Reports
-    await prisma.evalRun.create({
-      data: {
-        question: r.question,
-        groundTruth: r.ground_truth ?? null,
-        sourceFilter: body.source_filter ?? null,
-        baselines: body.baselines ?? ["gpt", "gemini"],
-        ragAnswer: r.rag_eval.answer,
-        ragAvgScore: r.rag_eval.average_score,
-        ragTotalScore: r.rag_eval.total_score,
-        gptAnswer: r.vanilla_gpt_eval?.answer ?? null,
-        gptAvgScore: r.vanilla_gpt_eval?.average_score ?? null,
-        gptTotalScore: r.vanilla_gpt_eval?.total_score ?? null,
-        geminiAnswer: r.vanilla_gemini_eval?.answer ?? null,
-        geminiAvgScore: r.vanilla_gemini_eval?.average_score ?? null,
-        geminiTotalScore: r.vanilla_gemini_eval?.total_score ?? null,
-        customAnswer: r.custom_eval?.answer ?? null,
-        customAvgScore: r.custom_eval?.average_score ?? null,
-        customTotalScore: r.custom_eval?.total_score ?? null,
-        customScores: r.custom_eval?.scores ?? null,
-        ragAdvantageVsGpt: r.rag_advantage_vs_gpt ?? null,
-        ragAdvantageVsGemini: r.rag_advantage_vs_gemini ?? null,
-        ragAdvantageVsCustom: r.rag_advantage_vs_custom ?? null,
-        ragScores: r.rag_eval.scores,
-        gptScores: r.vanilla_gpt_eval?.scores ?? null,
-        geminiScores: r.vanilla_gemini_eval?.scores ?? null,
-        ragSources: r.rag_sources,
-      },
-    });
-
-    return NextResponse.json(data);
-  } catch (err) {
-    const message = err instanceof Error ? err.message : "Unknown error";
-    console.error("Evaluate route error:", message);
-    return NextResponse.json(
-      { error: message },
-      { status: 502 }
-    );
-  }
+  });
 }

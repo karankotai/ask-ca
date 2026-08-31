@@ -1,28 +1,39 @@
-import { NextRequest, NextResponse } from "next/server";
-
-const RAG_URL = process.env.RAG_URL!;
+import { NextRequest } from "next/server";
+import { env } from "@/lib/env";
+import { logError } from "@/lib/logging";
+import { withAuth, NextResponse, parseNumericId } from "@/lib/auth";
 
 export async function GET(
-  _req: NextRequest,
-  { params }: { params: Promise<{ id: string }> }
+  req: NextRequest,
+  { params }: { params: Promise<{ id: string }> },
 ) {
-  try {
-    const { id } = await params;
-    const res = await fetch(`${RAG_URL}/obligations/${id}`);
-
-    const data = await res.json();
-    if (!res.ok) {
-      return NextResponse.json(
-        { error: data.detail || "Not found." },
-        { status: res.status }
-      );
-    }
-
-    return NextResponse.json(data);
-  } catch {
-    return NextResponse.json(
-      { error: "Could not connect to backend at " + RAG_URL },
-      { status: 502 }
-    );
-  }
+  return withAuth(
+    req,
+    { role: "user" },
+    async ({ params: _p }) => {
+      const rawId = (_p as { id: string }).id;
+      const id = parseNumericId(rawId);
+      if (!id) {
+        return NextResponse.json({ error: "Invalid id" }, { status: 400 });
+      }
+      try {
+        const res = await fetch(`${env.RAG_URL}/obligations/${id}`);
+        const data = await res.json();
+        if (!res.ok) {
+          return NextResponse.json(
+            { error: data.detail || "Not found." },
+            { status: res.status },
+          );
+        }
+        return NextResponse.json(data);
+      } catch (e) {
+        logError("obligations.byId.fetch", e);
+        return NextResponse.json(
+          { error: "Upstream service unavailable." },
+          { status: 502 },
+        );
+      }
+    },
+    params as unknown as Promise<Record<string, unknown>>,
+  );
 }

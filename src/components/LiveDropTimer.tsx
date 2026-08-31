@@ -13,7 +13,10 @@ export default function LiveDropTimer({ liveDropCircularId, delayMs = 60_000 }: 
   const [paused, setPaused] = useState(false);
   const remainingRef = useRef<number>(delayMs);
   const timeoutRef = useRef<number | null>(null);
-  const startedAtRef = useRef<number>(Date.now());
+  const startedAtRef = useRef<number | null>(null);
+  if (startedAtRef.current === null) {
+    startedAtRef.current = new Date().getTime();
+  }
 
   useEffect(() => {
     function fire() {
@@ -42,7 +45,8 @@ export default function LiveDropTimer({ liveDropCircularId, delayMs = 60_000 }: 
       }
       if (e.metaKey && e.shiftKey && (e.key === "P" || e.key === "p")) {
         e.preventDefault();
-        const elapsed = Date.now() - startedAtRef.current;
+        const started = startedAtRef.current ?? new Date().getTime();
+        const elapsed = new Date().getTime() - started;
         remainingRef.current = Math.max(0, remainingRef.current - elapsed) + PAUSE_MS;
         arm(remainingRef.current);
         setPaused(true);

@@ -1,16 +1,11 @@
 import Anthropic from "@anthropic-ai/sdk";
+import { env } from "./env";
 
 let client: Anthropic | null = null;
 
 function getClient(): Anthropic {
   if (!client) {
-    const apiKey = process.env.ANTHROPIC_API_KEY;
-    if (!apiKey) {
-      throw new Error(
-        "ANTHROPIC_API_KEY missing. Set it in .env (only required for offline precompute scripts).",
-      );
-    }
-    client = new Anthropic({ apiKey });
+    client = new Anthropic({ apiKey: env.ANTHROPIC_API_KEY });
   }
   return client;
 }
