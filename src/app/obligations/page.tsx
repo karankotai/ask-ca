@@ -455,7 +455,7 @@ export default function ObligationsPage() {
       {/* Nav */}
       <nav className="border-b border-zinc-800 px-4 py-3">
         <div className="mx-auto flex max-w-5xl items-center gap-6">
-          <Link href="/" className="text-sm text-zinc-400 hover:text-zinc-200">
+          <Link href="/chat" className="text-sm text-zinc-400 hover:text-zinc-200">
             Chat
           </Link>
           <Link

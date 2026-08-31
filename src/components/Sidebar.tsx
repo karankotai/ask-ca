@@ -12,7 +12,8 @@ type NavItem = {
 };
 
 const NAV: NavItem[] = [
-  { href: "/dashboard", label: "Dashboard", icon: LayoutGrid, match: (p) => p === "/" || p.startsWith("/dashboard") },
+  { href: "/", label: "Dashboard", icon: LayoutGrid, match: (p) => p === "/" || p.startsWith("/dashboard") },
+  { href: "/chat", label: "Chat", icon: MessageSquare, match: (p) => p.startsWith("/chat") },
   { href: "/circulars", label: "Circulars", icon: FileText, match: (p) => p.startsWith("/circulars") },
   { href: "/calendar", label: "Calendar", icon: Calendar, match: (p) => p.startsWith("/calendar") },
 ];
