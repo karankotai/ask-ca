@@ -23,9 +23,9 @@ function ymd(d: Date) {
 }
 
 export default async function CalendarPage({ searchParams }: {
-  searchParams: Promise<{ month?: string; view?: string }>;
+  searchParams: Promise<{ month?: string; view?: string; date?: string }>;
 }) {
-  const { month: monthParam, view: viewParam } = await searchParams;
+  const { month: monthParam, view: viewParam, date: dateParam } = await searchParams;
   const view = viewParam === "list" ? "list" : "month";
 
   const now = new Date();
@@ -61,15 +61,13 @@ export default async function CalendarPage({ searchParams }: {
   }
 
   // Build the 6-week grid (Mon-first)
-  // Find the Monday on or before the 1st of the month
-  const firstWeekday = monthStart.getDay(); // 0=Sun, 1=Mon, ...
+  const firstWeekday = monthStart.getDay();
   const offset = firstWeekday === 0 ? 6 : firstWeekday - 1;
   const gridStart = new Date(year, month, 1 - offset);
   const cells: Date[] = [];
   for (let i = 0; i < 42; i++) {
     cells.push(new Date(gridStart.getFullYear(), gridStart.getMonth(), gridStart.getDate() + i));
   }
-  // Trim to last full week containing month
   const lastInMonthIndex = cells.findIndex((d) => d.getMonth() !== month && d > monthEnd);
   let displayCells = cells;
   if (lastInMonthIndex >= 0) {
@@ -82,7 +80,6 @@ export default async function CalendarPage({ searchParams }: {
   const prevQs = `${prevMonth.getFullYear()}-${String(prevMonth.getMonth() + 1).padStart(2, "0")}`;
   const nextQs = `${nextMonth.getFullYear()}-${String(nextMonth.getMonth() + 1).padStart(2, "0")}`;
 
-  // For the right list — sort by due date, show all items in month
   const sideItems = inMonth.map((it) => ({
     id: it.id,
     title: it.actionRequired,
@@ -92,8 +89,8 @@ export default async function CalendarPage({ searchParams }: {
     actName: it.actName,
   }));
 
-  // For list view fallback
-  const tableItems = items.map((i) => ({
+  // Filter list view items by date if `?date=YYYY-MM-DD` is set
+  let tableItems = items.map((i) => ({
     id: i.id,
     clientName: i.client.name,
     actName: i.actName,
@@ -102,6 +99,17 @@ export default async function CalendarPage({ searchParams }: {
     status: i.status,
     severity: i.severity,
   }));
+  let dateFilteredCount = items.length;
+  if (dateParam && /^\d{4}-\d{2}-\d{2}$/.test(dateParam)) {
+    const d = new Date(dateParam + "T00:00:00");
+    const dayStart = new Date(d.getFullYear(), d.getMonth(), d.getDate());
+    const dayEnd = new Date(d.getFullYear(), d.getMonth(), d.getDate(), 23, 59, 59, 999);
+    tableItems = tableItems.filter((t) => {
+      const td = new Date(t.dueDate);
+      return td >= dayStart && td <= dayEnd;
+    });
+    dateFilteredCount = tableItems.length;
+  }
 
   if (view === "list") {
     return (
@@ -109,14 +117,19 @@ export default async function CalendarPage({ searchParams }: {
         <div className="page-row">
           <div>
             <div className="page-title">Compliance calendar</div>
-            <div className="page-subtitle">All clients · sorted by due date</div>
+            <div className="page-subtitle">
+              All clients · sorted by due date
+              {dateParam && dateFilteredCount !== items.length && (
+                <> · filtering {dateParam} ({dateFilteredCount} item{dateFilteredCount !== 1 ? "s" : ""})</>
+              )}
+            </div>
           </div>
           <div className="cal-view-toggle">
-            <Link href="/calendar" className="">Month</Link>
-            <Link href="/calendar?view=list" className="active">List</Link>
+            <Link href={dateParam ? `/calendar?date=${dateParam}` : "/calendar"} className="">Month</Link>
+            <Link href={dateParam ? `/calendar?view=list&date=${dateParam}` : "/calendar?view=list"} className="active">List</Link>
           </div>
         </div>
-        <CalendarTable items={tableItems} totalCount={items.length} />
+        <CalendarTable items={tableItems} totalCount={dateFilteredCount} />
       </div>
     );
   }
@@ -156,12 +169,10 @@ export default async function CalendarPage({ searchParams }: {
               const isToday = ymd(date) === ymd(today);
               const dayEvents = byDay.get(ymd(date)) ?? [];
               const uniqueStatuses = Array.from(new Set(dayEvents));
-
-              return (
-                <div
-                  key={i}
-                  className={`cal-day-cell ${isOutside ? "outside" : ""} ${isToday ? "today" : ""} ${dayEvents.length ? "has-events" : ""}`}
-                >
+              const hasEvents = dayEvents.length > 0;
+              const dateQs = ymd(date);
+              const cellContent = (
+                <>
                   <span>{date.getDate()}</span>
                   {!isToday && uniqueStatuses.length > 0 && (
                     <div className="cal-dots">
@@ -170,6 +181,28 @@ export default async function CalendarPage({ searchParams }: {
                       ))}
                     </div>
                   )}
+                </>
+              );
+
+              const cellClassName = `cal-day-cell ${isOutside ? "outside" : ""} ${isToday ? "today" : ""} ${hasEvents ? "has-events" : ""}`;
+
+              if (hasEvents) {
+                return (
+                  <Link
+                    key={i}
+                    href={`/calendar?view=list&date=${dateQs}`}
+                    className={cellClassName}
+                    aria-label={`${MONTH_NAMES[date.getMonth()].slice(0, 3)} ${date.getDate()} — ${dayEvents.length} event${dayEvents.length !== 1 ? "s" : ""}`}
+                    style={{ textDecoration: "none", color: "inherit" }}
+                  >
+                    {cellContent}
+                  </Link>
+                );
+              }
+
+              return (
+                <div key={i} className={cellClassName}>
+                  {cellContent}
                 </div>
               );
             })}

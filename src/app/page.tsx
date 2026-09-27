@@ -19,6 +19,13 @@ const SEV_LABEL: Record<string, string> = {
   low: "Low",
 };
 
+function timeGreeting(hour: number): { greeting: string; subtitle: string } {
+  if (hour < 12) return { greeting: "Good morning.", subtitle: "Here's what's on your plate today." };
+  if (hour < 17) return { greeting: "Good afternoon.", subtitle: "Catch up on today's updates." };
+  if (hour < 21) return { greeting: "Good evening.", subtitle: "A quick recap before you wrap up." };
+  return { greeting: "Good night.", subtitle: "Here's what's waiting for tomorrow." };
+}
+
 export default async function Home() {
   const clients = await prisma.client.findMany({
     include: {
@@ -67,36 +74,44 @@ export default async function Home() {
     })
     .slice(0, 5);
 
+  const totalOpenCount = clients.reduce((s, c) => s + c.complianceItems.length, 0);
+  const { greeting, subtitle } = timeGreeting(now.getHours());
+
   return (
     <div className="screen">
       <div className="page-row">
         <div>
-          <div className="page-title">Good morning.</div>
-          <div className="page-subtitle">Here&apos;s what changed since Friday.</div>
+          <div className="page-title">{greeting}</div>
+          <div className="page-subtitle">{subtitle}</div>
         </div>
       </div>
 
       <div className="stats">
-        <div className="stat-box clickable">
+        <Link href="/calendar?view=list" className="stat-box clickable" style={{ textDecoration: "none" }}>
           <div className="label">Clients flagged</div>
           <div className="value">{flaggedClients.length}</div>
-          <div className="sub warn">{flaggedClients.length > 0 ? "Action required" : "All on track"}</div>
-        </div>
-        <div className="stat-box clickable">
+          <div className={`sub ${flaggedClients.length > 0 ? "warn" : ""}`}>
+            {flaggedClients.length > 0 ? "Action required" : "All on track"}
+          </div>
+        </Link>
+        <Link href="/circulars" className="stat-box clickable" style={{ textDecoration: "none" }}>
           <div className="label">New circulars (7d)</div>
           <div className="value">{recentCirculars.length}</div>
-          <div className="sub muted">across {new Set(recentCirculars.flatMap((c) => c.affectedActs)).size} act{new Set(recentCirculars.flatMap((c) => c.affectedActs)).size !== 1 ? "s" : ""}</div>
-        </div>
-        <div className="stat-box clickable">
+          <div className="sub muted">
+            across {new Set(recentCirculars.flatMap((c) => c.affectedActs)).size} act
+            {new Set(recentCirculars.flatMap((c) => c.affectedActs)).size !== 1 ? "s" : ""}
+          </div>
+        </Link>
+        <Link href="/circulars" className="stat-box clickable" style={{ textDecoration: "none" }}>
           <div className="label">Total exposure</div>
           <div className="value">₹{totalExposureCr} cr</div>
           <div className="sub muted">across affected transactions</div>
-        </div>
-        <div className="stat-box clickable">
+        </Link>
+        <Link href="/calendar?view=list" className="stat-box clickable" style={{ textDecoration: "none" }}>
           <div className="label">Open items</div>
-          <div className="value">{allOpenItems.length > 0 ? clients.reduce((s, c) => s + c.complianceItems.length, 0) : 0}</div>
+          <div className="value">{allOpenItems.length > 0 ? totalOpenCount : 0}</div>
           <div className="sub muted">across all clients</div>
-        </div>
+        </Link>
       </div>
 
       <div className="two-col">
@@ -120,7 +135,9 @@ export default async function Home() {
                 </div>
                 {affected.length > 0 && (
                   <div className="reg-card-bottom">
-                    <span className="affected-text">{affected.length} client{affected.length !== 1 ? "s" : ""} affected</span>
+                    <span className="affected-text">
+                      {affected.length} client{affected.length !== 1 ? "s" : ""} affected
+                    </span>
                     <div className="client-pills">
                       {affected.slice(0, 3).map((a, i) => (
                         <span key={i} className="client-pill">{a.name.split(" ")[0]}</span>
@@ -131,6 +148,9 @@ export default async function Home() {
               </Link>
             );
           })}
+          {recentCirculars.length === 0 && (
+            <div className="empty-state">No circulars in the last 7 days.</div>
+          )}
         </div>
 
         <div>

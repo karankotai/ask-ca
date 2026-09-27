@@ -2,18 +2,9 @@ import { prisma } from "@/lib/prisma";
 import { notFound } from "next/navigation";
 import Link from "next/link";
 import { Send } from "lucide-react";
+import type { ImpactPayload } from "@/types/impact";
 
 export const dynamic = "force-dynamic";
-
-type ImpactPayload = {
-  severity: string;
-  summary: string;
-  rationale: string;
-  affectedTransactions: Array<{ transactionId: string; reason: string; requiredActions: string[] }>;
-  concentrationMetrics: { counterpartyName: string; percentage: number; threshold: number } | null;
-  totalAmount: number;
-  totalCount: number;
-};
 
 const SEV_ORDER: Record<string, number> = { critical: 0, high: 1, medium: 2, low: 3, not_affected: 4 };
 
@@ -23,6 +14,18 @@ const SEV_LABEL: Record<string, string> = {
   medium: "Medium",
   low: "Low",
   not_affected: "Not affected",
+};
+
+type ImpactRow = {
+  id: string;
+  circularId: number;
+  clientId: string;
+  payload: ImpactPayload;
+  client: {
+    id: string;
+    name: string;
+    sector: string;
+  };
 };
 
 export default async function ImpactPage({ params, searchParams }: {
@@ -39,23 +42,22 @@ export default async function ImpactPage({ params, searchParams }: {
 
   const allImpacts = await prisma.impactAnalysis.findMany({
     where: { circularId: id },
-    include: { client: true },
-  });
+    include: { client: { select: { id: true, name: true, sector: true } } },
+  }) as unknown as ImpactRow[];
 
   const sorted = allImpacts.sort((a, b) => {
-    const sa = (a.payload as ImpactPayload).severity;
-    const sb = (b.payload as ImpactPayload).severity;
+    const sa = a.payload.severity;
+    const sb = b.payload.severity;
     return (SEV_ORDER[sa] ?? 5) - (SEV_ORDER[sb] ?? 5);
   });
 
   const defaultClientId = sorted.find((i) => {
-    const p = i.payload as ImpactPayload;
-    return p.severity !== "not_affected" && i.client.sector === "pharma";
-  })?.clientId ?? sorted.find((i) => (i.payload as ImpactPayload).severity !== "not_affected")?.clientId ?? sorted[0]?.clientId;
+    return i.payload.severity !== "not_affected" && i.client.sector === "pharma";
+  })?.clientId ?? sorted.find((i) => i.payload.severity !== "not_affected")?.clientId ?? sorted[0]?.clientId;
 
   const selectedClientId = clientIdParam ?? defaultClientId;
   const selectedImpact = sorted.find((i) => i.clientId === selectedClientId);
-  const selectedPayload = selectedImpact?.payload as ImpactPayload | undefined;
+  const selectedPayload = selectedImpact?.payload;
 
   const selectedTxns = selectedImpact && selectedPayload
     ? await prisma.transaction.findMany({
@@ -85,7 +87,7 @@ export default async function ImpactPage({ params, searchParams }: {
           <div className="section-heading">Clients affected</div>
           <div className="client-list-card">
             {sorted.map((ia) => {
-              const p = ia.payload as ImpactPayload;
+              const p = ia.payload;
               const isSelected = ia.clientId === selectedClientId;
               return (
                 <Link

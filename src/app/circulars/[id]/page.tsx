@@ -3,6 +3,7 @@ import { notFound } from "next/navigation";
 import Link from "next/link";
 import { Calendar, Building2, Clock, AlertTriangle, Sparkles, Users } from "lucide-react";
 import LiveDropTimerWrapper from "./LiveDropTimerWrapper";
+import type { ImpactPayload } from "@/types/impact";
 
 export const dynamic = "force-dynamic";
 
@@ -25,6 +26,17 @@ function timeAgo(d: Date): string {
   return `${Math.floor(sec / 86400)} days ago`;
 }
 
+type ImpactRow = {
+  id: string;
+  circularId: number;
+  clientId: string;
+  payload: ImpactPayload;
+  client: {
+    id: string;
+    name: string;
+  };
+};
+
 export default async function CircularDetailPage({ params }: { params: Promise<{ id: string }> }) {
   const { id: idStr } = await params;
   const id = parseInt(idStr, 10);
@@ -35,11 +47,11 @@ export default async function CircularDetailPage({ params }: { params: Promise<{
 
   const impacts = await prisma.impactAnalysis.findMany({
     where: { circularId: id },
-    include: { client: true },
-  });
+    include: { client: { select: { id: true, name: true } } },
+  }) as unknown as ImpactRow[];
+
   const affectedClients = impacts.filter((i) => {
-    const p = i.payload as { severity: string };
-    return p.severity !== "not_affected";
+    return i.payload.severity !== "not_affected";
   });
 
   const isFocusCircular = circular.circularNumber === STATIC_FOCUS_CIRCULAR_NUMBER;

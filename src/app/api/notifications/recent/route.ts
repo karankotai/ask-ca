@@ -28,11 +28,11 @@ export async function GET(req: NextRequest) {
       });
 
       const counts = await Promise.all(
-        recent.map(async (c) => {
+        recent.map(async (c:any) => {
           const all = await prisma.impactAnalysis.findMany({
             where: { circularId: c.id },
           });
-          const affected = all.filter((ia) => {
+          const affected = all.filter((ia:any) => {
             const p = ia.payload as { severity?: string };
             return p.severity && p.severity !== "not_affected";
           }).length;
@@ -42,7 +42,7 @@ export async function GET(req: NextRequest) {
       const countMap = new Map(counts.map((x) => [x.id, x.affectedCount]));
 
       return NextResponse.json({
-        notifications: recent.map((c) => ({
+        notifications: recent.map((c:any) => ({
           id: c.id,
           title: c.title,
           severity: c.severity,

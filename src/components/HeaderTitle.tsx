@@ -11,6 +11,10 @@ const TITLES: Array<[RegExp, string]> = [
   [/^\/briefings/, "Briefings"],
   [/^\/comms\//, "Compliance Advisory"],
   [/^\/calendar/, "Compliance Calendar"],
+  [/^\/analyze/, "Circular Analysis"],
+  [/^\/evaluate/, "RAG Evaluation"],
+  [/^\/obligations/, "Obligation Extractor"],
+  [/^\/admin/, "Admin Dashboard"],
 ];
 
 export default function HeaderTitle() {

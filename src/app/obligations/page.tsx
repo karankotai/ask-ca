@@ -1,7 +1,6 @@
 "use client";
 
 import { useState, useEffect, useCallback, Fragment } from "react";
-import Link from "next/link";
 
 interface Extraction {
   circular_reference?: string;
@@ -48,42 +47,49 @@ interface Obligation {
   created_at: string;
 }
 
-const RISK_STYLES: Record<string, string> = {
-  HIGH: "bg-red-600 text-white",
-  MEDIUM: "bg-orange-500 text-white",
-  LOW: "bg-green-600 text-white",
-};
-
 const CHAIN_LABELS: Record<string, string> = {
   repeal: "REPEALED",
   supersession: "SUPERSEDES",
   amendment: "AMENDMENT",
 };
 
-const CHAIN_BADGE_STYLES: Record<string, string> = {
-  repeal: "bg-red-600 text-white",
-  supersession: "bg-amber-500 text-white",
-  amendment: "bg-blue-600 text-white",
-};
-
 function RiskBadge({ level }: { level: string }) {
-  return (
-    <span
-      className={`inline-block rounded px-2.5 py-0.5 text-xs font-semibold ${
-        RISK_STYLES[level] || "bg-zinc-600 text-white"
-      }`}
-    >
-      {level} RISK
-    </span>
-  );
+  const cls =
+    level === "HIGH"
+      ? "priority priority-critical"
+      : level === "MEDIUM"
+      ? "priority priority-medium"
+      : level === "LOW"
+      ? "priority priority-low"
+      : "priority priority-low";
+  return <span className={cls}>{level} RISK</span>;
 }
 
 function ChainBadge({ type }: { type: string }) {
+  const style: React.CSSProperties =
+    type === "repeal"
+      ? {
+          background: "var(--danger-bg)",
+          color: "var(--danger)",
+        }
+      : type === "supersession"
+      ? {
+          background: "var(--warning-bg)",
+          color: "var(--warning)",
+        }
+      : type === "amendment"
+      ? {
+          background: "var(--info-bg)",
+          color: "var(--info)",
+        }
+      : {
+          background: "var(--bg-main)",
+          color: "var(--text-mid)",
+        };
   return (
     <span
-      className={`ml-2 inline-block rounded px-2.5 py-0.5 text-xs font-semibold ${
-        CHAIN_BADGE_STYLES[type] || "bg-zinc-600 text-white"
-      }`}
+      className="ml-2 inline-block rounded px-2.5 py-0.5 text-xs font-semibold"
+      style={style}
     >
       {CHAIN_LABELS[type] || type.toUpperCase()}
     </span>
@@ -107,11 +113,14 @@ function ObligationCard({ item }: { item: Obligation }) {
   };
 
   return (
-    <div className="rounded-xl bg-[#2f2f2f] p-5 mb-6">
+    <div className="card mb-6">
       {/* Header */}
       <div className="flex items-start justify-between gap-4 mb-3">
         <div className="flex-1">
-          <h3 className="text-lg font-semibold text-white">
+          <h3
+            className="text-lg font-semibold"
+            style={{ color: "var(--text-dark)" }}
+          >
             {ext.subject || item.title}
             {item.chain_type && <ChainBadge type={item.chain_type} />}
           </h3>
@@ -122,18 +131,29 @@ function ObligationCard({ item }: { item: Obligation }) {
       {/* Metadata */}
       <div className="grid grid-cols-3 gap-4 mb-4 text-sm">
         <div>
-          <p className="text-zinc-400">
-            <span className="font-medium text-zinc-300">Authority:</span>{" "}
+          <p style={{ color: "var(--text-mid)" }}>
+            <span
+              className="font-medium"
+              style={{ color: "var(--text-dark)" }}
+            >
+              Authority:
+            </span>{" "}
             {ext.issuing_authority || "N/A"}
           </p>
-          <p className="text-zinc-400">
-            <span className="font-medium text-zinc-300">Circular:</span>{" "}
+          <p style={{ color: "var(--text-mid)" }}>
+            <span
+              className="font-medium"
+              style={{ color: "var(--text-dark)" }}
+            >
+              Circular:
+            </span>{" "}
             {item.source_url ? (
               <a
                 href={item.source_url}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="text-blue-400 hover:underline"
+                style={{ color: "var(--accent)" }}
+                className="hover:underline"
               >
                 {ext.circular_reference || "Link"}
               </a>
@@ -145,42 +165,64 @@ function ObligationCard({ item }: { item: Obligation }) {
           </p>
         </div>
         <div>
-          <p className="text-zinc-400">
-            <span className="font-medium text-zinc-300">Date Issued:</span>{" "}
+          <p style={{ color: "var(--text-mid)" }}>
+            <span
+              className="font-medium"
+              style={{ color: "var(--text-dark)" }}
+            >
+              Date Issued:
+            </span>{" "}
             {ext.date_issued || "N/A"}
           </p>
-          <p className="text-zinc-400">
-            <span className="font-medium text-zinc-300">Effective:</span>{" "}
+          <p style={{ color: "var(--text-mid)" }}>
+            <span
+              className="font-medium"
+              style={{ color: "var(--text-dark)" }}
+            >
+              Effective:
+            </span>{" "}
             {ext.effective_date || "N/A"}
           </p>
         </div>
         <div>
-          <p className="text-zinc-400">
-            <span className="font-medium text-zinc-300">Risk Rationale:</span>{" "}
+          <p style={{ color: "var(--text-mid)" }}>
+            <span
+              className="font-medium"
+              style={{ color: "var(--text-dark)" }}
+            >
+              Risk Rationale:
+            </span>{" "}
             {ext.risk_rationale || "N/A"}
           </p>
         </div>
       </div>
 
       {/* Summary */}
-      {ext.summary && (
-        <div className="mb-4 rounded-lg bg-blue-900/20 border border-blue-800/30 px-4 py-3 text-sm text-blue-200">
-          {ext.summary}
-        </div>
-      )}
+      {ext.summary && <div className="ai-card mb-4">{ext.summary}</div>}
 
       {/* Regulatory Lineage */}
       {(item.repealed_by ||
         (ext.supersedes && ext.supersedes.length > 0) ||
         (ext.amendments_to && ext.amendments_to.length > 0)) && (
         <div className="mb-4 space-y-2">
-          <p className="text-sm font-medium text-zinc-300">
+          <p
+            className="text-sm font-medium"
+            style={{ color: "var(--text-dark)" }}
+          >
             Regulatory Lineage:
           </p>
           {item.repealed_by && (
-            <div className="rounded-lg border-2 border-red-600 bg-red-900/10 px-4 py-3 text-sm">
-              <span className="font-bold text-red-400">REPEALED</span>
-              <span className="text-zinc-300">
+            <div
+              className="rounded-lg px-4 py-3 text-sm"
+              style={{
+                border: "2px solid var(--danger)",
+                background: "var(--danger-bg)",
+              }}
+            >
+              <span className="font-bold" style={{ color: "var(--danger)" }}>
+                REPEALED
+              </span>
+              <span style={{ color: "var(--text-dark)" }}>
                 {" "}
                 — This circular has been repealed and replaced by:{" "}
                 <strong>{item.repealed_by}</strong>
@@ -190,13 +232,26 @@ function ObligationCard({ item }: { item: Obligation }) {
           {ext.supersedes?.map((s, i) => (
             <div
               key={i}
-              className="rounded-lg border-2 border-amber-500 bg-amber-900/10 px-4 py-3 text-sm"
+              className="rounded-lg px-4 py-3 text-sm"
+              style={{
+                border: "2px solid var(--warning)",
+                background: "var(--warning-bg)",
+              }}
             >
-              <span className="font-bold text-amber-400">SUPERSEDES</span>
-              <span className="text-zinc-300">
+              <span className="font-bold" style={{ color: "var(--warning)" }}>
+                SUPERSEDES
+              </span>
+              <span style={{ color: "var(--text-dark)" }}>
                 {" "}
                 —{" "}
-                <code className="rounded bg-zinc-700 px-1.5 py-0.5 text-xs">
+                <code
+                  className="rounded px-1.5 py-0.5 text-xs"
+                  style={{
+                    background: "var(--bg-main)",
+                    color: "var(--text-dark)",
+                    border: "1px solid var(--border)",
+                  }}
+                >
                   {s.circular_reference}
                 </code>
                 : {s.description}
@@ -206,10 +261,16 @@ function ObligationCard({ item }: { item: Obligation }) {
           {ext.amendments_to?.map((a, i) => (
             <div
               key={i}
-              className="rounded-lg border-2 border-blue-500 bg-blue-900/10 px-4 py-3 text-sm"
+              className="rounded-lg px-4 py-3 text-sm"
+              style={{
+                border: "2px solid var(--info)",
+                background: "var(--info-bg)",
+              }}
             >
-              <span className="font-bold text-blue-400">AMENDS</span>
-              <span className="text-zinc-300">
+              <span className="font-bold" style={{ color: "var(--info)" }}>
+                AMENDS
+              </span>
+              <span style={{ color: "var(--text-dark)" }}>
                 {" "}
                 — <strong>{a.regulation_name}</strong> ({a.specific_provisions})
               </span>
@@ -221,13 +282,15 @@ function ObligationCard({ item }: { item: Obligation }) {
       {/* Applies to */}
       {ext.applies_to && ext.applies_to.length > 0 && (
         <div className="mb-4">
-          <p className="mb-2 text-sm font-medium text-zinc-300">Applies to:</p>
+          <p
+            className="mb-2 text-sm font-medium"
+            style={{ color: "var(--text-dark)" }}
+          >
+            Applies to:
+          </p>
           <div className="flex flex-wrap gap-2">
             {ext.applies_to.map((a, i) => (
-              <span
-                key={i}
-                className="inline-block rounded-full border border-purple-500/30 bg-purple-900/20 px-3 py-1 text-xs text-purple-200"
-              >
+              <span key={i} className="client-pill">
                 {a.entity_type}
               </span>
             ))}
@@ -238,45 +301,64 @@ function ObligationCard({ item }: { item: Obligation }) {
       {/* Obligations */}
       {ext.obligations && ext.obligations.length > 0 && (
         <div className="mb-4">
-          <p className="mb-2 text-sm font-medium text-zinc-300">
+          <p
+            className="mb-2 text-sm font-medium"
+            style={{ color: "var(--text-dark)" }}
+          >
             Compliance Obligations ({ext.obligations.length}):
           </p>
-          <div className="space-y-2">
+          <div className="client-list-card">
             {ext.obligations.map((obl, i) => (
-              <div
-                key={i}
-                className="rounded-lg border border-zinc-700 bg-[#262626]"
-              >
+              <div key={i} className="client-list-item">
                 <button
                   onClick={() => toggleObl(i)}
-                  className="flex w-full items-center justify-between px-4 py-3 text-left text-sm"
+                  className="flex w-full items-center justify-between text-left text-sm"
                 >
-                  <span className="text-zinc-200">
+                  <span style={{ color: "var(--text-dark)" }}>
                     {i + 1}. {obl.action.slice(0, 120)}
                     {obl.action.length > 120 ? "..." : ""}
                   </span>
-                  <span className="ml-2 text-zinc-500">
+                  <span
+                    className="ml-2"
+                    style={{ color: "var(--text-light)" }}
+                  >
                     {expandedObls.has(i) ? "−" : "+"}
                   </span>
                 </button>
                 {expandedObls.has(i) && (
-                  <div className="border-t border-zinc-700 px-4 py-3">
+                  <div
+                    className="mt-3 pt-3"
+                    style={{ borderTop: "1px solid var(--border)" }}
+                  >
                     <div className="grid grid-cols-2 gap-3 text-sm">
                       <div>
                         {obl.deadline && (
-                          <p className="text-zinc-400">
-                            <span className="font-medium text-zinc-300">
+                          <p style={{ color: "var(--text-mid)" }}>
+                            <span
+                              className="font-medium"
+                              style={{ color: "var(--text-dark)" }}
+                            >
                               Deadline:
                             </span>{" "}
                             {obl.deadline}
                           </p>
                         )}
                         {obl.form_or_filing && (
-                          <p className="text-zinc-400">
-                            <span className="font-medium text-zinc-300">
+                          <p style={{ color: "var(--text-mid)" }}>
+                            <span
+                              className="font-medium"
+                              style={{ color: "var(--text-dark)" }}
+                            >
                               Form:
                             </span>{" "}
-                            <code className="rounded bg-zinc-700 px-1.5 py-0.5 text-xs">
+                            <code
+                              className="rounded px-1.5 py-0.5 text-xs"
+                              style={{
+                                background: "var(--bg-main)",
+                                color: "var(--text-dark)",
+                                border: "1px solid var(--border)",
+                              }}
+                            >
                               {obl.form_or_filing}
                             </code>
                           </p>
@@ -284,16 +366,22 @@ function ObligationCard({ item }: { item: Obligation }) {
                       </div>
                       <div>
                         {obl.penalty_for_non_compliance && (
-                          <p className="text-zinc-400">
-                            <span className="font-medium text-zinc-300">
+                          <p style={{ color: "var(--text-mid)" }}>
+                            <span
+                              className="font-medium"
+                              style={{ color: "var(--text-dark)" }}
+                            >
                               Penalty:
                             </span>{" "}
                             {obl.penalty_for_non_compliance}
                           </p>
                         )}
                         {obl.section_reference && (
-                          <p className="text-zinc-400">
-                            <span className="font-medium text-zinc-300">
+                          <p style={{ color: "var(--text-mid)" }}>
+                            <span
+                              className="font-medium"
+                              style={{ color: "var(--text-dark)" }}
+                            >
                               Section:
                             </span>{" "}
                             {obl.section_reference}
@@ -302,7 +390,10 @@ function ObligationCard({ item }: { item: Obligation }) {
                       </div>
                     </div>
                     {obl.notes && (
-                      <p className="mt-2 text-xs text-zinc-500">
+                      <p
+                        className="mt-2 text-xs"
+                        style={{ color: "var(--text-light)" }}
+                      >
                         Note: {obl.notes}
                       </p>
                     )}
@@ -317,14 +408,22 @@ function ObligationCard({ item }: { item: Obligation }) {
       {/* Key thresholds */}
       {ext.key_thresholds && ext.key_thresholds.length > 0 && (
         <div>
-          <p className="mb-2 text-sm font-medium text-zinc-300">
+          <p
+            className="mb-2 text-sm font-medium"
+            style={{ color: "var(--text-dark)" }}
+          >
             Key Thresholds:
           </p>
           <div className="flex flex-wrap gap-2">
             {ext.key_thresholds.map((t, i) => (
               <span
                 key={i}
-                className="inline-block rounded-full border border-sky-500/30 bg-sky-900/20 px-3 py-1 text-xs text-sky-200"
+                className="tag tag-default"
+                style={{
+                  background: "var(--info-bg)",
+                  color: "var(--info)",
+                  borderColor: "var(--info)",
+                }}
               >
                 <strong>{t.parameter}:</strong> {t.value}
               </span>
@@ -363,8 +462,8 @@ export default function ObligationsPage() {
         setHistoryPage(data.page);
         setHistoryTotalPages(data.total_pages);
       }
-    } catch {
-      // silent
+    } catch (e) {
+      console.error("[obligations] fetchHistory failed", e);
     } finally {
       setHistoryLoading(false);
     }
@@ -401,7 +500,8 @@ export default function ObligationsPage() {
 
       setResult(data.obligation);
       fetchHistory(1);
-    } catch {
+    } catch (e) {
+      console.error("[obligations] handleSubmit failed", e);
       setError("Could not connect to extraction service.");
     } finally {
       setLoading(false);
@@ -422,8 +522,8 @@ export default function ObligationsPage() {
       if (res.ok) {
         setExpandedObligation(data);
       }
-    } catch {
-      // silent
+    } catch (e) {
+      console.error("[obligations] handleRowClick failed", e);
     }
   }
 
@@ -451,267 +551,227 @@ export default function ObligationsPage() {
   };
 
   return (
-    <div className="flex min-h-screen flex-col bg-[#212121] text-white">
-      {/* Nav */}
-      <nav className="border-b border-zinc-800 px-4 py-3">
-        <div className="mx-auto flex max-w-5xl items-center gap-6">
-          <Link
-            href="/circulars"
-            className="text-sm text-zinc-400 hover:text-zinc-200"
-          >
-            Circulars
-          </Link>
-          <Link
-            href="/evaluate"
-            className="text-sm text-zinc-400 hover:text-zinc-200"
-          >
-            Evaluate
-          </Link>
-          <Link
-            href="/analyze"
-            className="text-sm text-zinc-400 hover:text-zinc-200"
-          >
-            Analyze
-          </Link>
-          <span className="text-sm font-medium text-white">Obligations</span>
-          <Link
-            href="/admin"
-            className="text-sm text-zinc-400 hover:text-zinc-200"
-          >
-            Admin
-          </Link>
-        </div>
-      </nav>
+    <div className="screen" style={{ maxWidth: 980, margin: "0 auto" }}>
+      <div className="page-row">
+        <h1 className="page-title">Obligation Extractor</h1>
+        <p className="page-subtitle">
+          Paste a PDF URL to extract structured compliance obligations using AI.
+        </p>
+      </div>
 
-      <div className="mx-auto w-full max-w-5xl flex-1 px-4 py-8">
-        {/* Header */}
-        <div className="mb-8">
-          <h1 className="text-2xl font-semibold">Obligation Extractor</h1>
-          <p className="mt-1 text-sm text-zinc-400">
-            Paste a PDF URL to extract structured compliance obligations using
-            AI.
-          </p>
-        </div>
+      {/* Extraction Form */}
+      <form onSubmit={handleSubmit} className="mb-8">
+        <input
+          type="url"
+          value={url}
+          onChange={(e) => setUrl(e.target.value)}
+          placeholder="https://www.rbi.org.in/path/to/circular.pdf"
+          className="advisory-input mb-4 w-full"
+          required
+        />
 
-        {/* Extraction Form */}
-        <form onSubmit={handleSubmit} className="mb-8">
-          <input
-            type="url"
-            value={url}
-            onChange={(e) => setUrl(e.target.value)}
-            placeholder="https://www.rbi.org.in/path/to/circular.pdf"
-            className="mb-4 w-full rounded-xl bg-[#2f2f2f] px-4 py-3 text-sm text-white placeholder-zinc-500 outline-none focus:ring-1 focus:ring-zinc-600"
-            required
-          />
+        <div className="mb-4 flex flex-wrap items-end gap-4">
+          <div>
+            <label
+              className="mb-1 block text-xs"
+              style={{ color: "var(--text-mid)" }}
+            >
+              Chain Type (optional)
+            </label>
+            <select
+              value={chainType}
+              onChange={(e) => setChainType(e.target.value)}
+              className="advisory-input"
+              style={{ width: "auto", paddingTop: 8, paddingBottom: 8 }}
+            >
+              <option value="">Standalone</option>
+              <option value="repeal">Repeal</option>
+              <option value="supersession">Supersession</option>
+              <option value="amendment">Amendment</option>
+            </select>
+          </div>
 
-          <div className="mb-4 flex flex-wrap items-end gap-4">
-            <div>
-              <label className="mb-1 block text-xs text-zinc-400">
-                Chain Type (optional)
-              </label>
-              <select
-                value={chainType}
-                onChange={(e) => setChainType(e.target.value)}
-                className="rounded-lg bg-[#2f2f2f] px-3 py-2 text-sm text-white outline-none focus:ring-1 focus:ring-zinc-600"
+          {chainType === "repeal" && (
+            <div className="flex-1">
+              <label
+                className="mb-1 block text-xs"
+                style={{ color: "var(--text-mid)" }}
               >
-                <option value="">Standalone</option>
-                <option value="repeal">Repeal</option>
-                <option value="supersession">Supersession</option>
-                <option value="amendment">Amendment</option>
-              </select>
+                Repealed by
+              </label>
+              <input
+                type="text"
+                value={repealedBy}
+                onChange={(e) => setRepealedBy(e.target.value)}
+                placeholder="Name of replacing circular/regulation"
+                className="advisory-input w-full"
+                style={{ paddingTop: 8, paddingBottom: 8 }}
+              />
             </div>
+          )}
+        </div>
 
-            {chainType === "repeal" && (
-              <div className="flex-1">
-                <label className="mb-1 block text-xs text-zinc-400">
-                  Repealed by
-                </label>
-                <input
-                  type="text"
-                  value={repealedBy}
-                  onChange={(e) => setRepealedBy(e.target.value)}
-                  placeholder="Name of replacing circular/regulation"
-                  className="w-full rounded-lg bg-[#2f2f2f] px-3 py-2 text-sm text-white placeholder-zinc-500 outline-none focus:ring-1 focus:ring-zinc-600"
-                />
-              </div>
-            )}
-          </div>
+        <button
+          type="submit"
+          disabled={loading || !url.trim()}
+          className="btn btn-primary"
+        >
+          {loading ? "Extracting..." : "Extract Obligations"}
+        </button>
+      </form>
 
-          <button
-            type="submit"
-            disabled={loading || !url.trim()}
-            className="rounded-xl bg-white px-6 py-2.5 text-sm font-semibold text-black transition-colors hover:bg-zinc-200 disabled:opacity-30"
-          >
-            {loading ? "Extracting..." : "Extract Obligations"}
-          </button>
-        </form>
+      {/* Error */}
+      {error && (
+        <div
+          className="mb-6 rounded-xl text-sm"
+          style={{
+            background: "var(--danger-bg)",
+            color: "var(--danger)",
+            padding: "12px 14px",
+            borderRadius: 12,
+          }}
+        >
+          {error}
+        </div>
+      )}
 
-        {/* Error */}
-        {error && (
-          <div className="mb-6 rounded-xl bg-red-900/30 px-4 py-3 text-sm text-red-300">
-            {error}
-          </div>
-        )}
+      {/* Loading */}
+      {loading && (
+        <div
+          className="mb-6 py-8 text-sm"
+          style={{ color: "var(--text-mid)" }}
+        >
+          Loading... Downloading and analyzing circular... this may take 20-30
+          seconds.
+        </div>
+      )}
 
-        {/* Loading */}
-        {loading && (
-          <div className="mb-6 flex items-center gap-3 py-8">
-            <div className="flex items-center gap-1">
-              <span className="h-2 w-2 animate-bounce rounded-full bg-zinc-500 [animation-delay:0ms]" />
-              <span className="h-2 w-2 animate-bounce rounded-full bg-zinc-500 [animation-delay:150ms]" />
-              <span className="h-2 w-2 animate-bounce rounded-full bg-zinc-500 [animation-delay:300ms]" />
-            </div>
-            <span className="text-sm text-zinc-400">
-              Downloading and analyzing circular... this may take 20-30 seconds.
-            </span>
-          </div>
-        )}
+      {/* Result */}
+      {result && <ObligationCard item={result} />}
 
-        {/* Result */}
-        {result && <ObligationCard item={result} />}
+      {/* History Table */}
+      <div className="mt-8">
+        <h2 className="section-heading mb-4">Past Extractions</h2>
 
-        {/* History Table */}
-        <div className="mt-8">
-          <h2 className="mb-4 text-lg font-semibold">Past Extractions</h2>
-
-          {historyLoading && !history.length ? (
-            <p className="text-sm text-zinc-500">Loading history...</p>
-          ) : history.length === 0 ? (
-            <p className="text-sm text-zinc-500">No extractions yet.</p>
-          ) : (
-            <>
-              <div className="overflow-hidden rounded-xl border border-zinc-800">
-                <table className="w-full text-left text-sm">
-                  <thead className="border-b border-zinc-800 bg-[#2a2a2a]">
-                    <tr>
-                      <th className="px-4 py-3 font-medium text-zinc-400">
-                        Date
-                      </th>
-                      <th className="px-4 py-3 font-medium text-zinc-400">
-                        Title
-                      </th>
-                      <th className="px-4 py-3 font-medium text-zinc-400">
-                        Authority
-                      </th>
-                      <th className="px-4 py-3 font-medium text-zinc-400">
-                        Risk
-                      </th>
-                      <th className="px-4 py-3 font-medium text-zinc-400">
-                        Chain
-                      </th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {history.map((item) => {
-                      const ext = item.extraction as Extraction;
-                      const risk = ext?.compliance_risk_level || "";
-                      return (
-                        <Fragment key={item.id}>
-                          <tr
-                            onClick={() => handleRowClick(item.id)}
-                            className="cursor-pointer border-b border-zinc-800/50 transition-colors hover:bg-[#2f2f2f]"
-                          >
-                            <td className="whitespace-nowrap px-4 py-3 text-zinc-300">
-                              {new Date(item.created_at).toLocaleDateString(
-                                "en-IN",
-                                {
-                                  day: "2-digit",
-                                  month: "short",
-                                  year: "numeric",
-                                }
-                              )}
-                            </td>
-                            <td className="max-w-xs truncate px-4 py-3 text-zinc-200">
-                              {item.title || ext?.subject || "Untitled"}
-                            </td>
-                            <td className="px-4 py-3 text-zinc-300">
-                              {ext?.issuing_authority || "—"}
-                            </td>
-                            <td className="px-4 py-3">
-                              {risk && <RiskBadge level={risk} />}
-                            </td>
-                            <td className="px-4 py-3">
-                              {item.chain_type && (
-                                <ChainBadge type={item.chain_type} />
+        {historyLoading && !history.length ? (
+          <p className="text-sm" style={{ color: "var(--text-light)" }}>
+            Loading history...
+          </p>
+        ) : history.length === 0 ? (
+          <p className="text-sm" style={{ color: "var(--text-light)" }}>
+            No extractions yet.
+          </p>
+        ) : (
+          <>
+            <div className="card" style={{ padding: 0, overflow: "hidden" }}>
+              <table className="list-table">
+                <thead>
+                  <tr>
+                    <th>Date</th>
+                    <th>Title</th>
+                    <th>Authority</th>
+                    <th>Risk</th>
+                    <th>Chain</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {history.map((item) => {
+                    const ext = item.extraction as Extraction;
+                    const risk = ext?.compliance_risk_level || "";
+                    return (
+                      <Fragment key={item.id}>
+                        <tr
+                          onClick={() => handleRowClick(item.id)}
+                          className="cursor-pointer"
+                        >
+                          <td className="whitespace-nowrap">
+                            {new Date(item.created_at).toLocaleDateString(
+                              "en-IN",
+                              {
+                                day: "2-digit",
+                                month: "short",
+                                year: "numeric",
+                              }
+                            )}
+                          </td>
+                          <td className="max-w-xs truncate">
+                            {item.title || ext?.subject || "Untitled"}
+                          </td>
+                          <td>{ext?.issuing_authority || "—"}</td>
+                          <td>{risk && <RiskBadge level={risk} />}</td>
+                          <td>
+                            {item.chain_type && (
+                              <ChainBadge type={item.chain_type} />
+                            )}
+                          </td>
+                        </tr>
+                        {expandedId === item.id && (
+                          <tr>
+                            <td colSpan={5} style={{ padding: 16 }}>
+                              {!expandedObligation ? (
+                                <p
+                                  className="text-sm"
+                                  style={{ color: "var(--text-light)" }}
+                                >
+                                  Loading...
+                                </p>
+                              ) : (
+                                <ObligationCard item={expandedObligation} />
                               )}
                             </td>
                           </tr>
-                          {expandedId === item.id && (
-                            <tr>
-                              <td
-                                colSpan={5}
-                                className="bg-[#1a1a1a] px-4 py-4"
-                              >
-                                {!expandedObligation ? (
-                                  <p className="text-sm text-zinc-500">
-                                    Loading...
-                                  </p>
-                                ) : (
-                                  <ObligationCard item={expandedObligation} />
-                                )}
-                              </td>
-                            </tr>
-                          )}
-                        </Fragment>
-                      );
-                    })}
-                  </tbody>
-                </table>
+                        )}
+                      </Fragment>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
+
+            {/* Pagination */}
+            {historyTotalPages > 1 && (
+              <div className="mt-6 flex items-center justify-center gap-1">
+                <button
+                  onClick={() => goToHistoryPage(historyPage - 1)}
+                  disabled={historyPage === 1}
+                  className="btn btn-outline"
+                >
+                  Prev
+                </button>
+
+                {historyPageNumbers().map((p, i) =>
+                  p === "..." ? (
+                    <span
+                      key={`e${i}`}
+                      className="px-2 text-sm"
+                      style={{ color: "var(--text-light)" }}
+                    >
+                      ...
+                    </span>
+                  ) : (
+                    <button
+                      key={p}
+                      onClick={() => goToHistoryPage(p)}
+                      className={
+                        p === historyPage ? "btn btn-primary" : "btn btn-outline"
+                      }
+                    >
+                      {p}
+                    </button>
+                  )
+                )}
+
+                <button
+                  onClick={() => goToHistoryPage(historyPage + 1)}
+                  disabled={historyPage === historyTotalPages}
+                  className="btn btn-outline"
+                >
+                  Next
+                </button>
               </div>
-
-              {/* Pagination */}
-              {historyTotalPages > 1 && (
-                <div className="mt-6 flex items-center justify-center gap-1">
-                  <button
-                    onClick={() => goToHistoryPage(historyPage - 1)}
-                    disabled={historyPage === 1}
-                    className="rounded-lg px-3 py-2 text-sm text-zinc-400 hover:bg-[#2f2f2f] hover:text-white disabled:opacity-30 disabled:hover:bg-transparent"
-                  >
-                    Prev
-                  </button>
-
-                  {historyPageNumbers().map((p, i) =>
-                    p === "..." ? (
-                      <span
-                        key={`e${i}`}
-                        className="px-2 text-sm text-zinc-500"
-                      >
-                        ...
-                      </span>
-                    ) : (
-                      <button
-                        key={p}
-                        onClick={() => goToHistoryPage(p)}
-                        className={`rounded-lg px-3 py-2 text-sm font-medium transition-colors ${
-                          p === historyPage
-                            ? "bg-white text-black"
-                            : "text-zinc-400 hover:bg-[#2f2f2f] hover:text-white"
-                        }`}
-                      >
-                        {p}
-                      </button>
-                    )
-                  )}
-
-                  <button
-                    onClick={() => goToHistoryPage(historyPage + 1)}
-                    disabled={historyPage === historyTotalPages}
-                    className="rounded-lg px-3 py-2 text-sm text-zinc-400 hover:bg-[#2f2f2f] hover:text-white disabled:opacity-30 disabled:hover:bg-transparent"
-                  >
-                    Next
-                  </button>
-                </div>
-              )}
-            </>
-          )}
-        </div>
-      </div>
-
-      {/* Footer */}
-      <div className="border-t border-zinc-800 p-4">
-        <p className="text-center text-xs text-zinc-600">
-          Powered by your RAG pipeline
-        </p>
+            )}
+          </>
+        )}
       </div>
     </div>
   );

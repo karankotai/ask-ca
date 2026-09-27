@@ -1,5 +1,6 @@
 import { prisma } from "@/lib/prisma";
 import ConcentrationChart from "@/components/ConcentrationChart";
+import InteractiveStatusPill from "@/components/ui/InteractiveStatusPill";
 import { notFound } from "next/navigation";
 
 export const dynamic = "force-dynamic";
@@ -51,7 +52,10 @@ export default async function ClientPage({ params }: { params: Promise<{ id: str
       </div>
 
       <div className="section-heading">
-        Recent transactions <span style={{ color: "var(--text-light)", fontWeight: 400, fontSize: 12 }}>({client.transactions.length} of {totalTxnCount})</span>
+        Recent transactions{" "}
+        <span style={{ color: "var(--text-light)", fontWeight: 400, fontSize: 12 }}>
+          ({client.transactions.length} of {totalTxnCount})
+        </span>
       </div>
       <div className="card" style={{ padding: 0, marginBottom: 24 }}>
         <table className="list-table">
@@ -104,7 +108,7 @@ export default async function ClientPage({ params }: { params: Promise<{ id: str
                 {item.actName} · due {item.dueDate.toLocaleDateString("en-IN")}
               </div>
             </div>
-            <span className={`status-pill status-${item.status}`}>{item.status.replace("_", " ")}</span>
+            <InteractiveStatusPill itemId={item.id} initialStatus={item.status} />
           </div>
         ))}
         {client.complianceItems.length === 0 && (
