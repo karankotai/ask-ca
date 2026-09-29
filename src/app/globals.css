@@ -1015,6 +1015,11 @@ a.client-pill-link:active { transform: translateY(0.5px); }
 
 /* Status pill */
 .status-pill {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  white-space: nowrap;
   font-size: 11px;
   font-weight: 600;
   padding: 4px 10px;

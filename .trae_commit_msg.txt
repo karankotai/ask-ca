@@ -1,29 +1,31 @@
-Circular detail + impact subpage fixes
+Calendar list-view status badge fixes
 
-Circular detail page (circulars/[id]/page.tsx):
-- A1: Widen screen max-width 920px -> 1200px convention
-- A2: Deadline semantics: use deadlineFromPublished(releasedAt, N)
-  instead of new Date() + N; add overdue/today/dueSoon color/weight
-  on info-chip + subtitle line
-- A3: Severity capitalize text -> shared severityLabel() +
-  severityPriorityClass() pill; apply pill in page-row header + info-chip
-- A4: Bare <h1> title -> page-row with page-title + page-subtitle
-  containing source/circularNumber/effective/deadline with semantic
-  deadline coloring + aligned severity pill on right
-- A5: Counter "N of M" -> "{N} affected · {M} total scanned"
-- A6: Duplicate agency prefix in circular id line; stripCircularNumberPrefix
-  so MCA tag + MCA/2026/.. => MCA tag + 2026/..
+Issue 1 (done badge 2-line wrap): status-pill did not use inline-flex so
+<Check size={11} /> + "done" text wrapped onto two lines inside the pill.
+Fix in globals.css: add display:inline-flex, align-items/justify-content
+center, gap:4px, white-space:nowrap.
 
-Impact subpage (circulars/[id]/impact/page.tsx):
-- B1: Add max-width: 1200px to .screen (was unconstrained full width)
-- B2: Add deadlineFromPublished info + severity pill to page-row,
-  match semantic coloring/weight from list/detail pages
-- B3: Breadcrumb: "← Back to circular" -> "← Back to circular · All circulars"
-  double-link (to detail + to /circulars list)
+Issue 2 (lowercase badge labels): pills rendered i.status.replace("_", " ")
+→ "pending", "in progress", "done", "overdue" all lowercase.
+Fix in CalendarTable.tsx: add STATUS_LABEL ProperCase map (Pending, In
+Progress, Done, Overdue) with statusLabel() helper + capitalizeFirst
+fallback. Apply statusLabel() to all pill renders. In done-pill JSX,
+remove space between icon + label (icon + label both inline in flex),
+use {statusLabel(derivedStatus)} not raw.
+
+Bonus fixes bundled with badge work (same component touch site):
+- Derive status=overdue client-side when i.status !== "done" &&
+  i.dueDate < today (via isOverdueDueDate helper). This makes old
+  Apr/May/Jul items correctly render as red Overdue pills (DB rows
+  are status pending/in_progress but dates are stale).
+- Use derivedStatus in filter so filter-select "Overdue" option
+  actually matches rows (earlier it filtered on raw DB status which
+  never equals literal "overdue" string in complianceItems).
+- Progress copy: "N of M items complete" (remove "this month" in
+  list view since default list view shows all 10 compliance items
+  unfiltered by month).
+- Filter dropdown "In Progress" label ProperCase consistently.
 
 Files:
-- src/app/circulars/[id]/page.tsx: A1-A6 fixes, import deadlineFromPublished
-  + severity helpers + stripCircularNumberPrefix from utils.ts
-- src/app/circulars/[id]/impact/page.tsx: B1-B3 fixes, import deadlineFromPublished
-  from utils.ts
-- npx tsc --noEmit: 0 errors
+- src/app/globals.css: status-pill inline-flex/nowrap/align CSS
+- src/app/calendar/CalendarTable.tsx: all of the above
