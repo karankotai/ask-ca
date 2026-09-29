@@ -46,38 +46,39 @@ const CRITERIA = [
   "Nuance Handling",
 ];
 
+const LABEL_COLORS: Record<string, string> = {
+  rag: "#059669",
+  gpt: "#ea580c",
+  gemini: "#2563eb",
+  custom: "#7c3aed",
+};
+
+function evalFillColor(score: number): string {
+  if (score >= 4) return "#10b981";
+  if (score >= 3) return "#eab308";
+  return "#ef4444";
+}
+
 function ScoreBar({ score, max = 5 }: { score: number; max?: number }) {
   const pct = (score / max) * 100;
-  const color =
-    score >= 4 ? "bg-emerald-500" : score >= 3 ? "bg-yellow-500" : "bg-red-500";
   return (
-    <div className="flex items-center gap-2">
-      <div
-        className="h-2 w-16 rounded-full"
-        style={{ background: "var(--border)" }}
-      >
+    <div className="eval-scorebar">
+      <div className="eval-scorebar-track">
         <div
-          className={`h-2 rounded-full ${color}`}
-          style={{ width: `${pct}%` }}
+          className="eval-scorebar-fill"
+          style={{ width: `${pct}%`, background: evalFillColor(score) }}
         />
       </div>
-      <span className="w-5 text-right text-sm font-semibold" style={{ color: "var(--text-dark)" }}>{score}</span>
+      <span className="eval-scorebar-score">{score}</span>
     </div>
   );
 }
 
 function DeltaBadge({ value }: { value: number }) {
+  const cls =
+    value > 0 ? "eval-delta-pos" : value < 0 ? "eval-delta-neg" : "eval-delta-zero";
   return (
-    <span
-      className={`font-semibold ${
-        value > 0
-          ? "text-emerald-500"
-          : value < 0
-            ? "text-red-500"
-            : ""
-      }`}
-      style={value === 0 ? { color: "var(--text-light)" } : undefined}
-    >
+    <span className={`eval-delta ${cls}`}>
       {value > 0 ? "+" : ""}
       {value}
     </span>
@@ -107,21 +108,18 @@ function ScoreTable({
     : null;
 
   return (
-    <div className="overflow-x-auto">
-      <table className="w-full text-sm">
+    <div style={{ overflowX: "auto" }}>
+      <table className="eval-table">
         <thead>
-          <tr
-            className="border-b text-left text-xs uppercase tracking-wide"
-            style={{ borderColor: "var(--border)", color: "var(--text-light)" }}
-          >
-            <th className="py-2 pr-4">Criterion</th>
-            <th className="px-3 py-2 text-center">RAG</th>
-            {gptMap && <th className="px-3 py-2 text-center">GPT</th>}
-            {gemMap && <th className="px-3 py-2 text-center">Gemini</th>}
-            {custMap && <th className="px-3 py-2 text-center">Custom</th>}
-            {gptMap && <th className="px-2 py-2 text-center">vs GPT</th>}
-            {gemMap && <th className="px-2 py-2 text-center">vs Gemini</th>}
-            {custMap && <th className="py-2 pl-2 text-center">vs Custom</th>}
+          <tr style={{ borderColor: "var(--border)", color: "var(--text-light)" }}>
+            <th className="text-center" style={{ textAlign: "left", paddingLeft: 0 }}>Criterion</th>
+            <th className="text-center">RAG</th>
+            {gptMap && <th className="text-center">GPT</th>}
+            {gemMap && <th className="text-center">Gemini</th>}
+            {custMap && <th className="text-center">Custom</th>}
+            {gptMap && <th className="text-center">vs GPT</th>}
+            {gemMap && <th className="text-center">vs Gemini</th>}
+            {custMap && <th className="text-center">vs Custom</th>}
           </tr>
         </thead>
         <tbody>
@@ -131,46 +129,38 @@ function ScoreTable({
             const gemS = gemMap?.[crit]?.score ?? 0;
             const custS = custMap?.[crit]?.score ?? 0;
             return (
-              <tr key={crit} className="border-b" style={{ borderColor: "var(--border-light)" }}>
-                <td className="py-3 pr-4" style={{ color: "var(--text-dark)" }}>{crit}</td>
-                <td className="px-3 py-3">
-                  <div className="flex justify-center">
-                    <ScoreBar score={ragS} />
-                  </div>
+              <tr key={crit} style={{ borderColor: "var(--border-light)" }}>
+                <td className="criterion">{crit}</td>
+                <td style={{ textAlign: "center" }}>
+                  <ScoreBar score={ragS} />
                 </td>
                 {gptMap && (
-                  <td className="px-3 py-3">
-                    <div className="flex justify-center">
-                      <ScoreBar score={gptS} />
-                    </div>
+                  <td style={{ textAlign: "center" }}>
+                    <ScoreBar score={gptS} />
                   </td>
                 )}
                 {gemMap && (
-                  <td className="px-3 py-3">
-                    <div className="flex justify-center">
-                      <ScoreBar score={gemS} />
-                    </div>
+                  <td style={{ textAlign: "center" }}>
+                    <ScoreBar score={gemS} />
                   </td>
                 )}
                 {custMap && (
-                  <td className="px-3 py-3">
-                    <div className="flex justify-center">
-                      <ScoreBar score={custS} />
-                    </div>
+                  <td style={{ textAlign: "center" }}>
+                    <ScoreBar score={custS} />
                   </td>
                 )}
                 {gptMap && (
-                  <td className="px-2 py-3 text-center">
+                  <td style={{ textAlign: "center" }}>
                     <DeltaBadge value={ragS - gptS} />
                   </td>
                 )}
                 {gemMap && (
-                  <td className="px-2 py-3 text-center">
+                  <td style={{ textAlign: "center" }}>
                     <DeltaBadge value={ragS - gemS} />
                   </td>
                 )}
                 {custMap && (
-                  <td className="py-3 pl-2 text-center">
+                  <td style={{ textAlign: "center" }}>
                     <DeltaBadge value={ragS - custS} />
                   </td>
                 )}
@@ -207,66 +197,72 @@ function ReasoningPanel({
     : null;
 
   const cols = 1 + (gptMap ? 1 : 0) + (gemMap ? 1 : 0) + (custMap ? 1 : 0);
+  const gridClass = `eval-reasoning-grid cols-${cols}`;
 
-  let gridClass: string;
-  switch (cols) {
-    case 1:
-      gridClass = "grid gap-2 md:grid-cols-1";
-      break;
-    case 2:
-      gridClass = "grid gap-2 md:grid-cols-2";
-      break;
-    case 3:
-      gridClass = "grid gap-2 md:grid-cols-3";
-      break;
-    case 4:
-    default:
-      gridClass = "grid gap-2 md:grid-cols-4";
-      break;
-  }
+  const colLabelColor = (key: "rag" | "gpt" | "gemini" | "custom") =>
+    LABEL_COLORS[key] ?? "var(--text-light)";
 
   return (
     <div>
       <button
         onClick={() => setOpen(!open)}
-        className="text-sm hover:underline"
-        style={{ color: "var(--text-mid)" }}
+        style={{
+          background: "transparent",
+          border: "none",
+          padding: 0,
+          fontSize: 13,
+          color: "var(--text-mid)",
+          cursor: "pointer",
+          textDecoration: "none",
+          fontFamily: "inherit",
+        }}
+        onMouseEnter={(e) => (e.currentTarget.style.textDecoration = "underline")}
+        onMouseLeave={(e) => (e.currentTarget.style.textDecoration = "none")}
       >
         {open ? "Hide" : "Show"} judge reasoning
       </button>
       {open && (
-        <div className="mt-3 space-y-3">
+        <div className="eval-reasoning-criteria">
           {CRITERIA.map((crit) => (
             <div key={crit} className="card-soft">
-              <p className="mb-1 text-sm font-medium" style={{ color: "var(--text-dark)" }}>{crit}</p>
+              <p
+                style={{
+                  margin: "0 0 4px",
+                  fontSize: 13,
+                  fontWeight: 500,
+                  color: "var(--text-dark)",
+                }}
+              >
+                {crit}
+              </p>
               <div className={gridClass}>
                 <div>
-                  <p className="text-xs font-semibold text-emerald-600">RAG</p>
-                  <p className="text-xs" style={{ color: "var(--text-mid)" }}>
-                    {ragMap[crit]?.reasoning ?? "\u2014"}
+                  <p className="eval-reasoning-col-label" style={{ color: colLabelColor("rag") }}>RAG</p>
+                  <p className="eval-reasoning-col-text">
+                    {ragMap[crit]?.reasoning ?? "—"}
                   </p>
                 </div>
                 {gptMap && (
                   <div>
-                    <p className="text-xs font-semibold text-orange-600">GPT</p>
-                    <p className="text-xs" style={{ color: "var(--text-mid)" }}>
-                      {gptMap[crit]?.reasoning ?? "\u2014"}
+                    <p className="eval-reasoning-col-label" style={{ color: colLabelColor("gpt") }}>GPT</p>
+                    <p className="eval-reasoning-col-text">
+                      {gptMap[crit]?.reasoning ?? "—"}
                     </p>
                   </div>
                 )}
                 {gemMap && (
                   <div>
-                    <p className="text-xs font-semibold text-blue-600">Gemini</p>
-                    <p className="text-xs" style={{ color: "var(--text-mid)" }}>
-                      {gemMap[crit]?.reasoning ?? "\u2014"}
+                    <p className="eval-reasoning-col-label" style={{ color: colLabelColor("gemini") }}>Gemini</p>
+                    <p className="eval-reasoning-col-text">
+                      {gemMap[crit]?.reasoning ?? "—"}
                     </p>
                   </div>
                 )}
                 {custMap && (
                   <div>
-                    <p className="text-xs font-semibold text-purple-600">Custom</p>
-                    <p className="text-xs" style={{ color: "var(--text-mid)" }}>
-                      {custMap[crit]?.reasoning ?? "\u2014"}
+                    <p className="eval-reasoning-col-label" style={{ color: colLabelColor("custom") }}>Custom</p>
+                    <p className="eval-reasoning-col-text">
+                      {custMap[crit]?.reasoning ?? "—"}
                     </p>
                   </div>
                 )}
@@ -298,44 +294,54 @@ function AnswerComparison({ result }: { result: QuestionEvalResult }) {
 
   return (
     <div>
-      <div className="mb-3">
-        <div className="channel-toggle">
+      <div className="eval-answer-tabs">
+        <button
+          onClick={() => setTab("rag")}
+          className={`eval-answer-tab ${tab === "rag" ? "selected" : "unselected"}`}
+          style={tab === "rag" ? { background: LABEL_COLORS.rag } : undefined}
+        >
+          RAG Answer
+        </button>
+        {hasGpt && (
           <button
-            onClick={() => setTab("rag")}
-            className={tab === "rag" ? "active" : ""}
+            onClick={() => setTab("gpt")}
+            className={`eval-answer-tab ${tab === "gpt" ? "selected" : "unselected"}`}
+            style={tab === "gpt" ? { background: LABEL_COLORS.gpt } : undefined}
           >
-            RAG Answer
+            GPT Answer
           </button>
-          {hasGpt && (
-            <button
-              onClick={() => setTab("gpt")}
-              className={tab === "gpt" ? "active" : ""}
-            >
-              GPT Answer
-            </button>
-          )}
-          {hasGemini && (
-            <button
-              onClick={() => setTab("gemini")}
-              className={tab === "gemini" ? "active" : ""}
-            >
-              Gemini Answer
-            </button>
-          )}
-          {hasCustom && (
-            <button
-              onClick={() => setTab("custom")}
-              className={tab === "custom" ? "active" : ""}
-            >
-              Custom Answer
-            </button>
-          )}
-        </div>
+        )}
+        {hasGemini && (
+          <button
+            onClick={() => setTab("gemini")}
+            className={`eval-answer-tab ${tab === "gemini" ? "selected" : "unselected"}`}
+            style={tab === "gemini" ? { background: LABEL_COLORS.gemini } : undefined}
+          >
+            Gemini Answer
+          </button>
+        )}
+        {hasCustom && (
+          <button
+            onClick={() => setTab("custom")}
+            className={`eval-answer-tab ${tab === "custom" ? "selected" : "unselected"}`}
+            style={tab === "custom" ? { background: LABEL_COLORS.custom } : undefined}
+          >
+            Custom Answer
+          </button>
+        )}
       </div>
       <div
-        className="card-soft whitespace-pre-wrap"
+        className="card-soft"
+        style={{ whiteSpace: "pre-wrap" }}
       >
-        <p className="text-sm leading-relaxed" style={{ color: "var(--text-dark)" }}>
+        <p
+          style={{
+            fontSize: 13,
+            lineHeight: 1.7,
+            color: "var(--text-dark)",
+            margin: 0,
+          }}
+        >
           {eval_?.answer ?? "Not evaluated"}
         </p>
       </div>
@@ -347,25 +353,56 @@ function SourcesPanel({ sources }: { sources: Source[] }) {
   if (!sources.length) return null;
   return (
     <div>
-      <p className="mb-2 text-xs font-semibold uppercase tracking-wide" style={{ color: "var(--text-light)" }}>
+      <p
+        style={{
+          margin: "0 0 8px",
+          fontSize: 11,
+          fontWeight: 600,
+          letterSpacing: "0.08em",
+          textTransform: "uppercase",
+          color: "var(--text-light)",
+        }}
+      >
         RAG Retrieved Sources
       </p>
-      <div className="flex flex-col gap-2">
+      <div className="eval-sources-stack">
         {sources.map((src, j) => (
           <div key={j} className="card-soft">
-            <p className="font-medium text-sm" style={{ color: "var(--text-dark)" }}>{src.title}</p>
-            <p className="text-xs" style={{ color: "var(--text-mid)" }}>
+            <p
+              style={{
+                fontSize: 13,
+                fontWeight: 500,
+                color: "var(--text-dark)",
+                margin: "0 0 4px",
+              }}
+            >
+              {src.title}
+            </p>
+            <p style={{ fontSize: 12, color: "var(--text-mid)", margin: 0 }}>
               {src.source}
               {src.date ? ` | ${src.date}` : ""}
               {src.circular_number ? ` | ${src.circular_number}` : ""}
             </p>
-            <div className="mt-1 flex flex-wrap gap-2">
+            <div
+              style={{
+                marginTop: 4,
+                display: "flex",
+                flexWrap: "wrap",
+                gap: 8,
+              }}
+            >
               {src.link && (
                 <a
                   href={src.link}
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="text-xs text-indigo-600 hover:underline hover:text-indigo-700"
+                  style={{
+                    fontSize: 12,
+                    color: "var(--accent)",
+                    textDecoration: "none",
+                  }}
+                  onMouseEnter={(e) => (e.currentTarget.style.textDecoration = "underline")}
+                  onMouseLeave={(e) => (e.currentTarget.style.textDecoration = "none")}
                 >
                   Circular Link
                 </a>
@@ -376,7 +413,13 @@ function SourcesPanel({ sources }: { sources: Source[] }) {
                   href={pdf}
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="text-xs text-indigo-600 hover:underline hover:text-indigo-700"
+                  style={{
+                    fontSize: 12,
+                    color: "var(--accent)",
+                    textDecoration: "none",
+                  }}
+                  onMouseEnter={(e) => (e.currentTarget.style.textDecoration = "underline")}
+                  onMouseLeave={(e) => (e.currentTarget.style.textDecoration = "none")}
                 >
                   PDF{src.pdf_links.length > 1 ? ` ${k + 1}` : ""}
                 </a>
@@ -390,21 +433,34 @@ function SourcesPanel({ sources }: { sources: Source[] }) {
 }
 
 function AdvantageBadge({ value, label }: { value: number; label: string }) {
-  const textColor = value > 0
-    ? "#059669"
-    : value < 0
-      ? "#dc2626"
-      : "var(--text-mid)";
+  const color =
+    value > 0 ? "#059669" : value < 0 ? "#dc2626" : "var(--text-mid)";
   return (
-    <div className="text-center">
-      <p
-        className="text-2xl font-bold"
-        style={{ color: textColor }}
-      >
+    <div className="eval-stat-box">
+      <p className="eval-stat-value" style={{ color }}>
         {value > 0 ? "+" : ""}
         {value.toFixed(1)}
       </p>
-      <p className="text-xs" style={{ color: "var(--text-light)" }}>{label}</p>
+      <p className="eval-stat-label">{label}</p>
+    </div>
+  );
+}
+
+function StatBox({
+  value,
+  label,
+  color,
+}: {
+  value: number;
+  label: string;
+  color: string;
+}) {
+  return (
+    <div className="eval-stat-box">
+      <p className="eval-stat-value" style={{ color }}>
+        {value.toFixed(1)}
+      </p>
+      <p className="eval-stat-label">{label}</p>
     </div>
   );
 }
@@ -487,14 +543,11 @@ export default function EvaluatePage() {
     fontFamily: "inherit",
     outline: "none",
     transition: "all 0.12s",
-  };
-
-  const inputFocusStyle: React.CSSProperties = {
-    ...inputBaseStyle,
+    boxSizing: "border-box",
   };
 
   const inputProps = {
-    style: inputFocusStyle,
+    style: inputBaseStyle,
     onFocus: (e: React.FocusEvent<HTMLTextAreaElement | HTMLSelectElement>) => {
       e.currentTarget.style.borderColor = "var(--accent)";
       e.currentTarget.style.boxShadow = "0 0 0 3px rgba(79, 70, 229, 0.08)";
@@ -506,22 +559,19 @@ export default function EvaluatePage() {
   };
 
   return (
-    <div className="screen" style={{ maxWidth: 1080, margin: "0 auto" }}>
+    <div className="screen" style={{ maxWidth: 1200, margin: "0 auto" }}>
       <div className="page-row">
         <div>
-          <h1 className="page-title">RAG Evaluation</h1>
+          <h1 className="page-title">Evaluate answers</h1>
           <p className="page-subtitle">
             Compare RAG pipeline answers against vanilla LLMs — scored by GPT-4o judge on 5 criteria.
           </p>
         </div>
       </div>
 
-      {/* Form */}
-      <form onSubmit={handleSubmit} className="mb-8 space-y-4">
+      <form onSubmit={handleSubmit} style={{ marginBottom: 32, display: "flex", flexDirection: "column", gap: 16 }}>
         <div>
-          <label className="mb-1 block text-sm font-medium" style={{ color: "var(--text-dark)" }}>
-            Question
-          </label>
+          <label className="eval-form-label">Question</label>
           <textarea
             value={question}
             onChange={(e) => setQuestion(e.target.value)}
@@ -532,11 +582,10 @@ export default function EvaluatePage() {
           />
         </div>
 
-        <div className="grid gap-4 md:grid-cols-2">
+        <div className="eval-form-grid">
           <div>
-            <label className="mb-1 block text-sm font-medium" style={{ color: "var(--text-dark)" }}>
-              Ground Truth{" "}
-              <span style={{ color: "var(--text-light)" }}>(optional)</span>
+            <label className="eval-form-label">
+              Ground Truth<span className="hint">(optional)</span>
             </label>
             <textarea
               value={groundTruth}
@@ -548,9 +597,8 @@ export default function EvaluatePage() {
             />
           </div>
           <div>
-            <label className="mb-1 block text-sm font-medium" style={{ color: "var(--text-dark)" }}>
-              Source Filter{" "}
-              <span style={{ color: "var(--text-light)" }}>(optional)</span>
+            <label className="eval-form-label">
+              Source Filter<span className="hint">(optional)</span>
             </label>
             <select
               value={sourceFilter}
@@ -567,47 +615,42 @@ export default function EvaluatePage() {
           </div>
         </div>
 
-        {/* Baselines toggle */}
         <div>
-          <label className="mb-2 block text-sm font-medium" style={{ color: "var(--text-dark)" }}>
-            Compare against
-          </label>
-          <div className="flex gap-4 flex-wrap">
-            <label className={`flex items-center gap-2 btn ${baselines.includes("gpt") ? "btn-primary" : "btn-outline"}`}>
+          <label className="eval-form-label">Compare against</label>
+          <div className="eval-baseline-row">
+            <label className={`btn ${baselines.includes("gpt") ? "btn-primary" : "btn-outline"}`}>
               <input
                 type="checkbox"
                 checked={baselines.includes("gpt")}
                 onChange={() => toggleBaseline("gpt")}
-                className="hidden"
+                style={{ display: "none" }}
               />
-              <span className="text-sm font-medium">GPT</span>
+              <span style={{ fontSize: 13, fontWeight: 500 }}>GPT</span>
             </label>
-            <label className={`flex items-center gap-2 btn ${baselines.includes("gemini") ? "btn-primary" : "btn-outline"}`}>
+            <label className={`btn ${baselines.includes("gemini") ? "btn-primary" : "btn-outline"}`}>
               <input
                 type="checkbox"
                 checked={baselines.includes("gemini")}
                 onChange={() => toggleBaseline("gemini")}
-                className="hidden"
+                style={{ display: "none" }}
               />
-              <span className="text-sm font-medium">Gemini</span>
+              <span style={{ fontSize: 13, fontWeight: 500 }}>Gemini</span>
             </label>
-            <label className={`flex items-center gap-2 btn ${baselines.includes("custom") ? "btn-primary" : "btn-outline"}`}>
+            <label className={`btn ${baselines.includes("custom") ? "btn-primary" : "btn-outline"}`}>
               <input
                 type="checkbox"
                 checked={baselines.includes("custom")}
                 onChange={() => toggleBaseline("custom")}
-                className="hidden"
+                style={{ display: "none" }}
               />
-              <span className="text-sm font-medium">Custom Answer</span>
+              <span style={{ fontSize: 13, fontWeight: 500 }}>Custom Answer</span>
             </label>
           </div>
         </div>
 
         {hasCustomBaseline && (
           <div>
-            <label className="mb-1 block text-sm font-medium" style={{ color: "var(--text-dark)" }}>
-              Custom Answer
-            </label>
+            <label className="eval-form-label">Custom Answer</label>
             <textarea
               value={customAnswer}
               onChange={(e) => setCustomAnswer(e.target.value)}
@@ -619,82 +662,64 @@ export default function EvaluatePage() {
           </div>
         )}
 
-        <button
-          type="submit"
-          disabled={loading || !question.trim() || baselines.length === 0 || (hasCustomBaseline && !customAnswer.trim())}
-          className="btn btn-primary"
-        >
-          {loading ? "Evaluating..." : "Run Evaluation"}
-        </button>
+        <div>
+          <button
+            type="submit"
+            disabled={loading || !question.trim() || baselines.length === 0 || (hasCustomBaseline && !customAnswer.trim())}
+            className="btn btn-primary"
+          >
+            {loading ? "Evaluating..." : "Run Evaluation"}
+          </button>
+        </div>
       </form>
 
-      {/* Loading */}
       {loading && (
-        <div className="flex flex-col items-center gap-3 py-12">
-          <p className="text-sm" style={{ color: "var(--text-mid)" }}>
+        <div className="eval-loading-shell">
+          <p style={{ margin: 0, fontSize: 13, color: "var(--text-mid)" }}>
             Running {baselinesLabel} + judge evaluation...
           </p>
         </div>
       )}
 
-      {/* Error */}
-      {error && (
-        <div
-          className="mb-6 rounded-xl"
-          style={{
-            background: "var(--danger-bg)",
-            color: "var(--danger)",
-            padding: "12px 14px",
-            fontSize: "14px",
-          }}
-        >
-          {error}
-        </div>
-      )}
+      {error && <div className="eval-error-block">{error}</div>}
 
-      {/* Results */}
       {result && (
-        <div className="space-y-8">
-          {/* Summary header */}
+        <div style={{ display: "flex", flexDirection: "column", gap: 32 }}>
           <div className="card">
-            <div className="flex flex-wrap items-center gap-4">
-              <div className="min-w-0 flex-1">
-                <p className="text-sm" style={{ color: "var(--text-light)" }}>Question</p>
-                <p className="mt-0.5 font-medium" style={{ color: "var(--text-dark)" }}>{result.question}</p>
+            <div className="eval-summary-row">
+              <div className="eval-summary-question">
+                <p className="q-label">Question</p>
+                <p className="q-text">{result.question}</p>
               </div>
-              <div className="flex gap-5 text-center">
-                <div>
-                  <p className="text-2xl font-bold text-emerald-600">
-                    {result.rag_eval.average_score.toFixed(1)}
-                  </p>
-                  <p className="text-xs" style={{ color: "var(--text-light)" }}>RAG</p>
-                </div>
+              <div className="eval-summary-stats">
+                <StatBox
+                  value={result.rag_eval.average_score}
+                  label="RAG"
+                  color={LABEL_COLORS.rag}
+                />
                 {hasGpt && (
-                  <div>
-                    <p className="text-2xl font-bold text-orange-600">
-                      {result.vanilla_gpt_eval!.average_score.toFixed(1)}
-                    </p>
-                    <p className="text-xs" style={{ color: "var(--text-light)" }}>GPT</p>
-                  </div>
+                  <StatBox
+                    value={result.vanilla_gpt_eval!.average_score}
+                    label="GPT"
+                    color={LABEL_COLORS.gpt}
+                  />
                 )}
                 {hasGemini && (
-                  <div>
-                    <p className="text-2xl font-bold text-blue-600">
-                      {result.vanilla_gemini_eval!.average_score.toFixed(1)}
-                    </p>
-                    <p className="text-xs" style={{ color: "var(--text-light)" }}>Gemini</p>
-                  </div>
+                  <StatBox
+                    value={result.vanilla_gemini_eval!.average_score}
+                    label="Gemini"
+                    color={LABEL_COLORS.gemini}
+                  />
                 )}
                 {hasCustom && (
-                  <div>
-                    <p className="text-2xl font-bold text-purple-600">
-                      {result.custom_eval!.average_score.toFixed(1)}
-                    </p>
-                    <p className="text-xs" style={{ color: "var(--text-light)" }}>Custom</p>
-                  </div>
+                  <StatBox
+                    value={result.custom_eval!.average_score}
+                    label="Custom"
+                    color={LABEL_COLORS.custom}
+                  />
                 )}
                 {hasGpt && result.rag_advantage_vs_gpt != null && (
-                  <div className="border-l pl-5" style={{ borderColor: "var(--border)" }}>
+                  <div className="eval-advantage-divider">
                     <AdvantageBadge value={result.rag_advantage_vs_gpt} label="vs GPT" />
                   </div>
                 )}
@@ -708,11 +733,8 @@ export default function EvaluatePage() {
             </div>
           </div>
 
-          {/* Score table */}
           <div className="card">
-            <h2 className="mb-4 text-lg font-semibold" style={{ color: "var(--text-dark)" }}>
-              Score Comparison
-            </h2>
+            <h2 className="eval-section-title">Score Comparison</h2>
             <ScoreTable
               ragScores={result.rag_eval.scores}
               gptScores={result.vanilla_gpt_eval?.scores ?? null}
@@ -721,7 +743,6 @@ export default function EvaluatePage() {
             />
           </div>
 
-          {/* Judge reasoning */}
           <div className="card">
             <ReasoningPanel
               ragScores={result.rag_eval.scores}
@@ -731,13 +752,11 @@ export default function EvaluatePage() {
             />
           </div>
 
-          {/* Answers */}
           <div className="card">
-            <h2 className="mb-4 text-lg font-semibold" style={{ color: "var(--text-dark)" }}>Answers</h2>
+            <h2 className="eval-section-title">Answers</h2>
             <AnswerComparison result={result} />
           </div>
 
-          {/* Sources */}
           {result.rag_sources.length > 0 && (
             <div className="card">
               <SourcesPanel sources={result.rag_sources} />

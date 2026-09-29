@@ -48,34 +48,39 @@ interface EvalRun {
   ragSources: Source[];
 }
 
+const LABEL_COLORS: Record<string, string> = {
+  rag: "#059669",
+  gpt: "#ea580c",
+  gemini: "#2563eb",
+  custom: "#7c3aed",
+};
+
+function evalFillColor(score: number): string {
+  if (score >= 4) return "#10b981";
+  if (score >= 3) return "#eab308";
+  return "#ef4444";
+}
+
 function ScoreBar({ score, max = 5 }: { score: number; max?: number }) {
   const pct = (score / max) * 100;
-  const color =
-    score >= 4 ? "bg-emerald-500" : score >= 3 ? "bg-yellow-500" : "bg-red-500";
   return (
-    <div className="flex items-center gap-2">
-      <div className="h-2 w-16 rounded-full bg-zinc-700">
+    <div className="eval-scorebar">
+      <div className="eval-scorebar-track">
         <div
-          className={`h-2 rounded-full ${color}`}
-          style={{ width: `${pct}%` }}
+          className="eval-scorebar-fill"
+          style={{ width: `${pct}%`, background: evalFillColor(score) }}
         />
       </div>
-      <span className="w-5 text-right text-sm font-semibold">{score}</span>
+      <span className="eval-scorebar-score">{score}</span>
     </div>
   );
 }
 
 function DeltaBadge({ value }: { value: number }) {
+  const cls =
+    value > 0 ? "eval-delta-pos" : value < 0 ? "eval-delta-neg" : "eval-delta-zero";
   return (
-    <span
-      className={`font-semibold ${
-        value > 0
-          ? "text-emerald-400"
-          : value < 0
-            ? "text-red-400"
-            : "text-zinc-500"
-      }`}
-    >
+    <span className={`eval-delta ${cls}`}>
       {value > 0 ? "+" : ""}
       {value}
     </span>
@@ -106,18 +111,18 @@ function ScoreTable({
   const criteria = ragScores.map((s) => s.criterion);
 
   return (
-    <div className="overflow-x-auto">
-      <table className="w-full text-sm">
+    <div style={{ overflowX: "auto" }}>
+      <table className="eval-table">
         <thead>
-          <tr className="border-b border-zinc-700 text-left text-xs uppercase tracking-wide text-zinc-400">
-            <th className="py-2 pr-4">Criterion</th>
-            <th className="px-3 py-2 text-center">RAG</th>
-            {gptMap && <th className="px-3 py-2 text-center">GPT</th>}
-            {gemMap && <th className="px-3 py-2 text-center">Gemini</th>}
-            {custMap && <th className="px-3 py-2 text-center">Custom</th>}
-            {gptMap && <th className="px-2 py-2 text-center">vs GPT</th>}
-            {gemMap && <th className="px-2 py-2 text-center">vs Gemini</th>}
-            {custMap && <th className="py-2 pl-2 text-center">vs Custom</th>}
+          <tr style={{ borderColor: "var(--border)", color: "var(--text-light)" }}>
+            <th style={{ textAlign: "left", paddingLeft: 0 }}>Criterion</th>
+            <th className="text-center">RAG</th>
+            {gptMap && <th className="text-center">GPT</th>}
+            {gemMap && <th className="text-center">Gemini</th>}
+            {custMap && <th className="text-center">Custom</th>}
+            {gptMap && <th className="text-center">vs GPT</th>}
+            {gemMap && <th className="text-center">vs Gemini</th>}
+            {custMap && <th className="text-center">vs Custom</th>}
           </tr>
         </thead>
         <tbody>
@@ -127,46 +132,38 @@ function ScoreTable({
             const gemS = gemMap?.[crit]?.score ?? 0;
             const custS = custMap?.[crit]?.score ?? 0;
             return (
-              <tr key={crit} className="border-b border-zinc-800">
-                <td className="py-3 pr-4 text-zinc-300">{crit}</td>
-                <td className="px-3 py-3">
-                  <div className="flex justify-center">
-                    <ScoreBar score={ragS} />
-                  </div>
+              <tr key={crit} style={{ borderColor: "var(--border-light)" }}>
+                <td className="criterion">{crit}</td>
+                <td style={{ textAlign: "center" }}>
+                  <ScoreBar score={ragS} />
                 </td>
                 {gptMap && (
-                  <td className="px-3 py-3">
-                    <div className="flex justify-center">
-                      <ScoreBar score={gptS} />
-                    </div>
+                  <td style={{ textAlign: "center" }}>
+                    <ScoreBar score={gptS} />
                   </td>
                 )}
                 {gemMap && (
-                  <td className="px-3 py-3">
-                    <div className="flex justify-center">
-                      <ScoreBar score={gemS} />
-                    </div>
+                  <td style={{ textAlign: "center" }}>
+                    <ScoreBar score={gemS} />
                   </td>
                 )}
                 {custMap && (
-                  <td className="px-3 py-3">
-                    <div className="flex justify-center">
-                      <ScoreBar score={custS} />
-                    </div>
+                  <td style={{ textAlign: "center" }}>
+                    <ScoreBar score={custS} />
                   </td>
                 )}
                 {gptMap && (
-                  <td className="px-2 py-3 text-center">
+                  <td style={{ textAlign: "center" }}>
                     <DeltaBadge value={ragS - gptS} />
                   </td>
                 )}
                 {gemMap && (
-                  <td className="px-2 py-3 text-center">
+                  <td style={{ textAlign: "center" }}>
                     <DeltaBadge value={ragS - gemS} />
                   </td>
                 )}
                 {custMap && (
-                  <td className="py-3 pl-2 text-center">
+                  <td style={{ textAlign: "center" }}>
                     <DeltaBadge value={ragS - custS} />
                   </td>
                 )}
@@ -202,40 +199,53 @@ function ReasoningPanel({
     : null;
   const criteria = ragScores.map((s) => s.criterion);
   const cols = 1 + (gptMap ? 1 : 0) + (gemMap ? 1 : 0) + (custMap ? 1 : 0);
+  const gridClass = `eval-reasoning-grid cols-${cols}`;
+
+  const colLabelColor = (key: "rag" | "gpt" | "gemini" | "custom") =>
+    LABEL_COLORS[key] ?? "var(--text-light)";
 
   return (
-    <div className="space-y-3">
+    <div className="eval-reasoning-criteria" style={{ marginTop: 0 }}>
       {criteria.map((crit) => (
-        <div key={crit} className="rounded-lg bg-[#1a1a1a] p-3">
-          <p className="mb-1 text-sm font-medium text-zinc-300">{crit}</p>
-          <div className={`grid gap-2 md:grid-cols-${cols}`}>
+        <div key={crit} className="card-soft">
+          <p
+            style={{
+              margin: "0 0 4px",
+              fontSize: 13,
+              fontWeight: 500,
+              color: "var(--text-dark)",
+            }}
+          >
+            {crit}
+          </p>
+          <div className={gridClass}>
             <div>
-              <p className="text-xs font-semibold text-emerald-400">RAG</p>
-              <p className="text-xs text-zinc-400">
-                {ragMap[crit]?.reasoning ?? "\u2014"}
+              <p className="eval-reasoning-col-label" style={{ color: colLabelColor("rag") }}>RAG</p>
+              <p className="eval-reasoning-col-text">
+                {ragMap[crit]?.reasoning ?? "—"}
               </p>
             </div>
             {gptMap && (
               <div>
-                <p className="text-xs font-semibold text-orange-400">GPT</p>
-                <p className="text-xs text-zinc-400">
-                  {gptMap[crit]?.reasoning ?? "\u2014"}
+                <p className="eval-reasoning-col-label" style={{ color: colLabelColor("gpt") }}>GPT</p>
+                <p className="eval-reasoning-col-text">
+                  {gptMap[crit]?.reasoning ?? "—"}
                 </p>
               </div>
             )}
             {gemMap && (
               <div>
-                <p className="text-xs font-semibold text-blue-400">Gemini</p>
-                <p className="text-xs text-zinc-400">
-                  {gemMap[crit]?.reasoning ?? "\u2014"}
+                <p className="eval-reasoning-col-label" style={{ color: colLabelColor("gemini") }}>Gemini</p>
+                <p className="eval-reasoning-col-text">
+                  {gemMap[crit]?.reasoning ?? "—"}
                 </p>
               </div>
             )}
             {custMap && (
               <div>
-                <p className="text-xs font-semibold text-purple-400">Custom</p>
-                <p className="text-xs text-zinc-400">
-                  {custMap[crit]?.reasoning ?? "\u2014"}
+                <p className="eval-reasoning-col-label" style={{ color: colLabelColor("custom") }}>Custom</p>
+                <p className="eval-reasoning-col-text">
+                  {custMap[crit]?.reasoning ?? "—"}
                 </p>
               </div>
             )}
@@ -265,25 +275,19 @@ function AnswerComparison({ run }: { run: EvalRun }) {
 
   return (
     <div>
-      <div className="mb-3 flex gap-2">
+      <div className="eval-answer-tabs">
         <button
           onClick={() => setTab("rag")}
-          className={`rounded-lg px-3 py-1.5 text-sm font-medium transition-colors ${
-            tab === "rag"
-              ? "bg-emerald-600 text-white"
-              : "bg-zinc-800 text-zinc-400 hover:text-zinc-200"
-          }`}
+          className={`eval-answer-tab ${tab === "rag" ? "selected" : "unselected"}`}
+          style={tab === "rag" ? { background: LABEL_COLORS.rag } : undefined}
         >
           RAG Answer
         </button>
         {hasGpt && (
           <button
             onClick={() => setTab("gpt")}
-            className={`rounded-lg px-3 py-1.5 text-sm font-medium transition-colors ${
-              tab === "gpt"
-                ? "bg-orange-600 text-white"
-                : "bg-zinc-800 text-zinc-400 hover:text-zinc-200"
-            }`}
+            className={`eval-answer-tab ${tab === "gpt" ? "selected" : "unselected"}`}
+            style={tab === "gpt" ? { background: LABEL_COLORS.gpt } : undefined}
           >
             GPT Answer
           </button>
@@ -291,11 +295,8 @@ function AnswerComparison({ run }: { run: EvalRun }) {
         {hasGemini && (
           <button
             onClick={() => setTab("gemini")}
-            className={`rounded-lg px-3 py-1.5 text-sm font-medium transition-colors ${
-              tab === "gemini"
-                ? "bg-blue-600 text-white"
-                : "bg-zinc-800 text-zinc-400 hover:text-zinc-200"
-            }`}
+            className={`eval-answer-tab ${tab === "gemini" ? "selected" : "unselected"}`}
+            style={tab === "gemini" ? { background: LABEL_COLORS.gemini } : undefined}
           >
             Gemini Answer
           </button>
@@ -303,18 +304,22 @@ function AnswerComparison({ run }: { run: EvalRun }) {
         {hasCustom && (
           <button
             onClick={() => setTab("custom")}
-            className={`rounded-lg px-3 py-1.5 text-sm font-medium transition-colors ${
-              tab === "custom"
-                ? "bg-purple-600 text-white"
-                : "bg-zinc-800 text-zinc-400 hover:text-zinc-200"
-            }`}
+            className={`eval-answer-tab ${tab === "custom" ? "selected" : "unselected"}`}
+            style={tab === "custom" ? { background: LABEL_COLORS.custom } : undefined}
           >
             Custom Answer
           </button>
         )}
       </div>
-      <div className="rounded-lg bg-[#1a1a1a] p-4">
-        <p className="whitespace-pre-wrap text-sm leading-relaxed text-zinc-200">
+      <div className="card-soft" style={{ whiteSpace: "pre-wrap" }}>
+        <p
+          style={{
+            fontSize: 13,
+            lineHeight: 1.7,
+            color: "var(--text-dark)",
+            margin: 0,
+          }}
+        >
           {answer ?? "Not evaluated"}
         </p>
       </div>
@@ -326,25 +331,56 @@ function SourcesPanel({ sources }: { sources: Source[] }) {
   if (!sources.length) return null;
   return (
     <div>
-      <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-zinc-400">
+      <p
+        style={{
+          margin: "0 0 8px",
+          fontSize: 11,
+          fontWeight: 600,
+          letterSpacing: "0.08em",
+          textTransform: "uppercase",
+          color: "var(--text-light)",
+        }}
+      >
         RAG Retrieved Sources
       </p>
-      <div className="flex flex-col gap-2">
+      <div className="eval-sources-stack">
         {sources.map((src, j) => (
-          <div key={j} className="rounded-lg bg-[#2f2f2f] px-3 py-2 text-sm">
-            <p className="font-medium text-zinc-200">{src.title}</p>
-            <p className="text-xs text-zinc-400">
+          <div key={j} className="card-soft">
+            <p
+              style={{
+                fontSize: 13,
+                fontWeight: 500,
+                color: "var(--text-dark)",
+                margin: "0 0 4px",
+              }}
+            >
+              {src.title}
+            </p>
+            <p style={{ fontSize: 12, color: "var(--text-mid)", margin: 0 }}>
               {src.source}
               {src.date ? ` | ${src.date}` : ""}
               {src.circular_number ? ` | ${src.circular_number}` : ""}
             </p>
-            <div className="mt-1 flex flex-wrap gap-2">
+            <div
+              style={{
+                marginTop: 4,
+                display: "flex",
+                flexWrap: "wrap",
+                gap: 8,
+              }}
+            >
               {src.link && (
                 <a
                   href={src.link}
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="text-xs text-blue-400 hover:text-blue-300 hover:underline"
+                  style={{
+                    fontSize: 12,
+                    color: "var(--accent)",
+                    textDecoration: "none",
+                  }}
+                  onMouseEnter={(e) => (e.currentTarget.style.textDecoration = "underline")}
+                  onMouseLeave={(e) => (e.currentTarget.style.textDecoration = "none")}
                 >
                   Circular Link
                 </a>
@@ -355,7 +391,13 @@ function SourcesPanel({ sources }: { sources: Source[] }) {
                   href={pdf}
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="text-xs text-blue-400 hover:text-blue-300 hover:underline"
+                  style={{
+                    fontSize: 12,
+                    color: "var(--accent)",
+                    textDecoration: "none",
+                  }}
+                  onMouseEnter={(e) => (e.currentTarget.style.textDecoration = "underline")}
+                  onMouseLeave={(e) => (e.currentTarget.style.textDecoration = "none")}
                 >
                   PDF{src.pdf_links.length > 1 ? ` ${k + 1}` : ""}
                 </a>
@@ -369,21 +411,34 @@ function SourcesPanel({ sources }: { sources: Source[] }) {
 }
 
 function AdvantageBadge({ value, label }: { value: number; label: string }) {
+  const color =
+    value > 0 ? "#059669" : value < 0 ? "#dc2626" : "var(--text-mid)";
   return (
-    <div className="text-center">
-      <p
-        className={`text-2xl font-bold ${
-          value > 0
-            ? "text-emerald-400"
-            : value < 0
-              ? "text-red-400"
-              : "text-zinc-400"
-        }`}
-      >
+    <div className="eval-stat-box">
+      <p className="eval-stat-value" style={{ color }}>
         {value > 0 ? "+" : ""}
         {value.toFixed(1)}
       </p>
-      <p className="text-xs text-zinc-400">{label}</p>
+      <p className="eval-stat-label">{label}</p>
+    </div>
+  );
+}
+
+function StatBox({
+  value,
+  label,
+  color,
+}: {
+  value: number;
+  label: string;
+  color: string;
+}) {
+  return (
+    <div className="eval-stat-box">
+      <p className="eval-stat-value" style={{ color }}>
+        {value.toFixed(1)}
+      </p>
+      <p className="eval-stat-label">{label}</p>
     </div>
   );
 }
@@ -418,126 +473,94 @@ export default function EvalDetailPage() {
   const hasCustom = run?.customAnswer != null;
 
   return (
-    <div className="flex min-h-screen flex-col bg-[#212121] text-white">
-      {/* Nav */}
-      <nav className="border-b border-zinc-800 px-4 py-3">
-        <div className="mx-auto flex max-w-5xl items-center gap-6">
-          <Link
-            href="/circulars"
-            className="text-sm text-zinc-400 hover:text-zinc-200"
-          >
-            Circulars
-          </Link>
+    <div className="screen" style={{ maxWidth: 1200, margin: "0 auto" }}>
+      <div className="page-row">
+        <div>
           <Link
             href="/evaluate"
-            className="text-sm text-zinc-400 hover:text-zinc-200"
+            style={{
+              display: "inline-flex",
+              alignItems: "center",
+              gap: 4,
+              fontSize: 12,
+              color: "var(--text-mid)",
+              textDecoration: "none",
+              marginBottom: 12,
+            }}
+            onMouseEnter={(e) => (e.currentTarget.style.textDecoration = "underline")}
+            onMouseLeave={(e) => (e.currentTarget.style.textDecoration = "none")}
           >
-            Evaluate
+            &larr; Back to Evaluations
           </Link>
-          <Link
-            href="/analyze"
-            className="text-sm text-zinc-400 hover:text-zinc-200"
-          >
-            Analyze
-          </Link>
-          <Link
-            href="/obligations"
-            className="text-sm text-zinc-400 hover:text-zinc-200"
-          >
-            Obligations
-          </Link>
-          <Link
-            href="/admin"
-            className="text-sm text-zinc-400 hover:text-zinc-200"
-          >
-            Admin
-          </Link>
+          <h1 className="page-title">Evaluation detail</h1>
+          <p className="page-subtitle">
+            {run
+              ? `${new Date(run.createdAt).toLocaleString()}${
+                  run.sourceFilter ? ` · Source: ${run.sourceFilter}` : ""
+                }`
+              : "Evaluation report"}
+          </p>
         </div>
-      </nav>
+      </div>
 
-      <div className="mx-auto w-full max-w-5xl flex-1 px-4 py-8">
-        {/* Back link */}
-        <Link
-          href="/admin"
-          className="mb-6 inline-flex items-center gap-1 text-sm text-zinc-400 hover:text-zinc-200"
-        >
-          &larr; Back to Reports
-        </Link>
+      {loading && (
+        <div className="empty-state">Loading evaluation…</div>
+      )}
 
-        {loading && (
-          <div className="flex justify-center py-12">
-            <div className="flex items-center gap-1">
-              <span className="h-2 w-2 animate-bounce rounded-full bg-zinc-500 [animation-delay:0ms]" />
-              <span className="h-2 w-2 animate-bounce rounded-full bg-zinc-500 [animation-delay:150ms]" />
-              <span className="h-2 w-2 animate-bounce rounded-full bg-zinc-500 [animation-delay:300ms]" />
-            </div>
-          </div>
-        )}
+      {error && <div className="eval-error-block">{error}</div>}
 
-        {error && (
-          <div className="rounded-xl bg-red-900/30 px-4 py-3 text-sm text-red-300">
-            {error}
-          </div>
-        )}
-
-        {run && (
-          <div className="space-y-8">
-            {/* Header */}
-            <div>
-              <h1 className="text-2xl font-semibold">Evaluation Detail</h1>
-              <p className="mt-1 text-sm text-zinc-400">
-                {new Date(run.createdAt).toLocaleString()}
-                {run.sourceFilter && ` · Source: ${run.sourceFilter}`}
-              </p>
-            </div>
-
-            {/* Summary */}
-            <div className="flex flex-wrap items-center gap-4 rounded-xl bg-[#2f2f2f] p-5">
-              <div className="min-w-0 flex-1">
-                <p className="text-sm text-zinc-400">Question</p>
-                <p className="mt-0.5 font-medium">{run.question}</p>
+      {run && (
+        <div style={{ display: "flex", flexDirection: "column", gap: 32 }}>
+          <div className="card">
+            <div className="eval-summary-row">
+              <div className="eval-summary-question">
+                <p className="q-label">Question</p>
+                <p className="q-text">{run.question}</p>
                 {run.groundTruth && (
                   <>
-                    <p className="mt-3 text-sm text-zinc-400">Ground Truth</p>
-                    <p className="mt-0.5 text-sm text-zinc-300">
+                    <p className="q-label" style={{ marginTop: 12 }}>Ground Truth</p>
+                    <p
+                      style={{
+                        margin: "2px 0 0",
+                        fontSize: 13,
+                        lineHeight: 1.6,
+                        color: "var(--text-mid)",
+                      }}
+                    >
                       {run.groundTruth}
                     </p>
                   </>
                 )}
               </div>
-              <div className="flex gap-5 text-center">
-                <div>
-                  <p className="text-2xl font-bold text-emerald-400">
-                    {run.ragAvgScore.toFixed(1)}
-                  </p>
-                  <p className="text-xs text-zinc-400">RAG</p>
-                </div>
+              <div className="eval-summary-stats">
+                <StatBox
+                  value={run.ragAvgScore}
+                  label="RAG"
+                  color={LABEL_COLORS.rag}
+                />
                 {hasGpt && run.gptAvgScore != null && (
-                  <div>
-                    <p className="text-2xl font-bold text-orange-400">
-                      {run.gptAvgScore.toFixed(1)}
-                    </p>
-                    <p className="text-xs text-zinc-400">GPT</p>
-                  </div>
+                  <StatBox
+                    value={run.gptAvgScore}
+                    label="GPT"
+                    color={LABEL_COLORS.gpt}
+                  />
                 )}
                 {hasGemini && run.geminiAvgScore != null && (
-                  <div>
-                    <p className="text-2xl font-bold text-blue-400">
-                      {run.geminiAvgScore.toFixed(1)}
-                    </p>
-                    <p className="text-xs text-zinc-400">Gemini</p>
-                  </div>
+                  <StatBox
+                    value={run.geminiAvgScore}
+                    label="Gemini"
+                    color={LABEL_COLORS.gemini}
+                  />
                 )}
                 {hasCustom && run.customAvgScore != null && (
-                  <div>
-                    <p className="text-2xl font-bold text-purple-400">
-                      {run.customAvgScore.toFixed(1)}
-                    </p>
-                    <p className="text-xs text-zinc-400">Custom</p>
-                  </div>
+                  <StatBox
+                    value={run.customAvgScore}
+                    label="Custom"
+                    color={LABEL_COLORS.custom}
+                  />
                 )}
                 {run.ragAdvantageVsGpt != null && (
-                  <div className="border-l border-zinc-700 pl-5">
+                  <div className="eval-advantage-divider">
                     <AdvantageBadge value={run.ragAdvantageVsGpt} label="vs GPT" />
                   </div>
                 )}
@@ -549,51 +572,40 @@ export default function EvalDetailPage() {
                 )}
               </div>
             </div>
-
-            {/* Score table */}
-            <div className="rounded-xl bg-[#2f2f2f] p-5">
-              <h2 className="mb-4 text-lg font-semibold">Score Comparison</h2>
-              <ScoreTable
-                ragScores={run.ragScores}
-                gptScores={run.gptScores}
-                geminiScores={run.geminiScores}
-                customScores={run.customScores}
-              />
-            </div>
-
-            {/* Judge reasoning */}
-            <div className="rounded-xl bg-[#2f2f2f] p-5">
-              <h2 className="mb-4 text-lg font-semibold">Judge Reasoning</h2>
-              <ReasoningPanel
-                ragScores={run.ragScores}
-                gptScores={run.gptScores}
-                geminiScores={run.geminiScores}
-                customScores={run.customScores}
-              />
-            </div>
-
-            {/* Answers */}
-            <div className="rounded-xl bg-[#2f2f2f] p-5">
-              <h2 className="mb-4 text-lg font-semibold">Answers</h2>
-              <AnswerComparison run={run} />
-            </div>
-
-            {/* Sources */}
-            {run.ragSources.length > 0 && (
-              <div className="rounded-xl bg-[#2f2f2f] p-5">
-                <SourcesPanel sources={run.ragSources} />
-              </div>
-            )}
           </div>
-        )}
-      </div>
 
-      {/* Footer */}
-      <div className="border-t border-zinc-800 p-4">
-        <p className="text-center text-xs text-zinc-600">
-          Powered by your RAG pipeline
-        </p>
-      </div>
+          <div className="card">
+            <h2 className="eval-section-title">Score Comparison</h2>
+            <ScoreTable
+              ragScores={run.ragScores}
+              gptScores={run.gptScores}
+              geminiScores={run.geminiScores}
+              customScores={run.customScores}
+            />
+          </div>
+
+          <div className="card">
+            <h2 className="eval-section-title">Judge Reasoning</h2>
+            <ReasoningPanel
+              ragScores={run.ragScores}
+              gptScores={run.gptScores}
+              geminiScores={run.geminiScores}
+              customScores={run.customScores}
+            />
+          </div>
+
+          <div className="card">
+            <h2 className="eval-section-title">Answers</h2>
+            <AnswerComparison run={run} />
+          </div>
+
+          {run.ragSources.length > 0 && (
+            <div className="card">
+              <SourcesPanel sources={run.ragSources} />
+            </div>
+          )}
+        </div>
+      )}
     </div>
   );
 }
