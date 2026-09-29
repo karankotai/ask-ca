@@ -1,11 +1,18 @@
 "use client";
 
-import { useState, useEffect } from "react";
-import { LoadingDots, ErrorBox } from "./shared";
+import { useState, useEffect, useCallback } from "react";
+import { LoadingPlaceholder, ErrorBox } from "./shared";
 
-const SOURCES = ["all", "rbi", "sebi", "mca", "irdai", "egazette"];
+const SOURCES: { value: string; label: string }[] = [
+  { value: "all", label: "All sources" },
+  { value: "rbi", label: "RBI" },
+  { value: "sebi", label: "SEBI" },
+  { value: "mca", label: "MCA" },
+  { value: "irdai", label: "IRDAI" },
+  { value: "egazette", label: "e-Gazette" },
+];
 
-export default function ScrapingTab() {
+export default function CrawlTab() {
   const [source, setSource] = useState("all");
   const [maxPages, setMaxPages] = useState(50);
   const [offset, setOffset] = useState(0);
@@ -16,7 +23,8 @@ export default function ScrapingTab() {
   const [recordCount, setRecordCount] = useState<number | null>(null);
   const [error, setError] = useState<string | null>(null);
 
-  // Stream crawl progress via SSE
+  const sourceLabel = SOURCES.find((s) => s.value === source)?.label ?? "All sources";
+
   useEffect(() => {
     if (!taskId || status === "completed" || status === "failed") return;
 
@@ -48,7 +56,7 @@ export default function ScrapingTab() {
     return () => eventSource.close();
   }, [taskId, status]);
 
-  async function handleStart() {
+  const handleStart = useCallback(async () => {
     setLoading(true);
     setError(null);
     setTaskId(null);
@@ -80,87 +88,78 @@ export default function ScrapingTab() {
       setError("Could not connect to backend.");
       setLoading(false);
     }
-  }
+  }, [source, maxPages, deepCrawl, offset]);
 
   return (
-    <div className="space-y-6">
-      <div className="grid gap-4 md:grid-cols-3">
+    <div className="admin-stack">
+      <div className="admin-grid cols-3">
         <div>
-          <label className="mb-1 block text-sm font-medium text-zinc-300">
-            Source
-          </label>
+          <label className="admin-label">Source</label>
           <select
             value={source}
             onChange={(e) => setSource(e.target.value)}
-            className="w-full rounded-xl bg-[#2f2f2f] px-4 py-3 text-white outline-none focus:ring-1 focus:ring-zinc-600"
+            className="admin-select"
           >
             {SOURCES.map((s) => (
-              <option key={s} value={s}>
-                {s.toUpperCase()}
+              <option key={s.value} value={s.value}>
+                {s.label}
               </option>
             ))}
           </select>
         </div>
         <div>
-          <label className="mb-1 block text-sm font-medium text-zinc-300">
-            Max Pages
-          </label>
+          <label className="admin-label">Max Pages</label>
           <input
             type="number"
             value={maxPages}
             onChange={(e) => setMaxPages(Number(e.target.value))}
             min={1}
             max={500}
-            className="w-full rounded-xl bg-[#2f2f2f] px-4 py-3 text-white outline-none focus:ring-1 focus:ring-zinc-600"
+            className="admin-input"
           />
         </div>
         <div>
-          <label className="mb-1 block text-sm font-medium text-zinc-300">
-            Record Offset
-          </label>
+          <label className="admin-label">Record Offset</label>
           <input
             type="number"
             value={offset}
             onChange={(e) => setOffset(Number(e.target.value))}
             min={0}
             max={10000}
-            className="w-full rounded-xl bg-[#2f2f2f] px-4 py-3 text-white outline-none focus:ring-1 focus:ring-zinc-600"
+            className="admin-input"
           />
         </div>
       </div>
 
-      <label className="flex items-center gap-3 rounded-xl bg-[#2f2f2f] px-4 py-3">
+      <label className="admin-checkcard">
         <input
           type="checkbox"
           checked={deepCrawl}
           onChange={(e) => setDeepCrawl(e.target.checked)}
-          className="h-4 w-4 rounded"
         />
-        <span className="text-sm text-zinc-300">
-          Deep Crawl (follow links, extract full content)
-        </span>
+        <span>Deep Crawl (follow links, extract full content)</span>
       </label>
 
       <button
+        type="button"
         onClick={handleStart}
         disabled={loading}
-        className="rounded-xl bg-white px-6 py-2.5 text-sm font-semibold text-black transition-colors hover:bg-zinc-200 disabled:opacity-30"
+        className="btn btn-primary"
       >
         {loading ? "Crawling..." : "Start Crawl"}
       </button>
 
       {loading && (
-        <div className="flex items-center gap-3 rounded-xl bg-[#2f2f2f] p-4">
-          <LoadingDots />
-          <span className="text-sm text-zinc-400">
-            Crawling {source.toUpperCase()}...
+        <div className="admin-loading">
+          <span className="admin-loading-text">
+            Crawling {sourceLabel}...
             {recordCount !== null && ` (${recordCount} records so far)`}
           </span>
         </div>
       )}
 
       {status === "completed" && (
-        <div className="rounded-xl bg-emerald-900/30 px-4 py-3 text-sm text-emerald-300">
+        <div className="admin-completed">
           Crawl completed. {recordCount} records collected.
         </div>
       )}

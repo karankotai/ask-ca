@@ -27,20 +27,16 @@ export interface EvalRunRecord {
   ragSources: unknown[];
 }
 
-export function LoadingDots() {
+export function LoadingPlaceholder({ message }: { message?: string }) {
   return (
-    <div className="flex items-center gap-1">
-      <span className="h-2 w-2 animate-bounce rounded-full bg-zinc-500 [animation-delay:0ms]" />
-      <span className="h-2 w-2 animate-bounce rounded-full bg-zinc-500 [animation-delay:150ms]" />
-      <span className="h-2 w-2 animate-bounce rounded-full bg-zinc-500 [animation-delay:300ms]" />
+    <div className="empty-state">
+      {message ?? "Loading…"}
     </div>
   );
 }
 
 export function ErrorBox({ message }: { message: string }) {
   return (
-    <div className="rounded-xl bg-red-900/30 px-4 py-3 text-sm text-red-300">
-      {message}
-    </div>
+    <div className="admin-error">{message}</div>
   );
 }

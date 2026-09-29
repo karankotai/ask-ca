@@ -16,23 +16,19 @@ export default function AdminError({
   }, [error]);
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-[#212121] text-white p-8">
-      <div className="max-w-md w-full space-y-6 text-center p-8 rounded-2xl border border-zinc-800 bg-zinc-900/60">
-        <h2 className="text-xl font-semibold">Admin tool error</h2>
-        <p className="text-sm text-zinc-400">
+    <div className="app-error-shell">
+      <div className="app-error-card">
+        <h2 style={{ fontSize: 18, fontWeight: 600, margin: 0 }}>
+          Admin tool error
+        </h2>
+        <p style={{ color: "var(--text-mid)", fontSize: 14, margin: "6px 0 0" }}>
           The admin panel hit an error. Details are logged server-side.
         </p>
-        <div className="flex flex-col sm:flex-row gap-3 justify-center pt-2">
-          <button
-            onClick={reset}
-            className="rounded-lg bg-white px-5 py-2.5 text-sm font-medium text-zinc-950 hover:bg-zinc-100 transition"
-          >
+        <div className="app-error-actions">
+          <button type="button" onClick={reset} className="btn btn-primary">
             Try again
           </button>
-          <Link
-            href="/admin"
-            className="rounded-lg border border-zinc-700 px-5 py-2.5 text-sm font-medium text-zinc-200 hover:bg-zinc-800 transition"
-          >
+          <Link href="/admin" className="btn btn-outline">
             Back to Admin
           </Link>
         </div>

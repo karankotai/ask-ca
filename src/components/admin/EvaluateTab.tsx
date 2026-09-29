@@ -1,7 +1,23 @@
 "use client";
 
 import { useState } from "react";
-import { LoadingDots, ErrorBox, CriterionScore } from "./shared";
+import { LoadingPlaceholder, ErrorBox, CriterionScore } from "./shared";
+import Link from "next/link";
+
+const COLORS = {
+  rag: "#10b981",
+  gpt: "#f97316",
+  gemini: "#3b82f6",
+  danger: "#ef4444",
+  neutral: "#6b7280",
+} as const;
+
+function advantageClass(d: number | null | undefined) {
+  if (d == null) return COLORS.neutral;
+  if (d > 0) return COLORS.rag;
+  if (d < 0) return COLORS.danger;
+  return COLORS.neutral;
+}
 
 export default function EvaluateTab() {
   const [question, setQuestion] = useState("");
@@ -59,6 +75,7 @@ export default function EvaluateTab() {
     vanilla_gemini_eval: { average_score: number; scores: CriterionScore[] } | null;
     rag_advantage_vs_gpt: number | null;
     rag_advantage_vs_gemini: number | null;
+    eval_run_id?: string;
   } | null;
 
   const hasGpt = r?.vanilla_gpt_eval != null;
@@ -71,26 +88,24 @@ export default function EvaluateTab() {
   ].join(" + ");
 
   return (
-    <div className="space-y-6">
-      <form onSubmit={handleEvaluate} className="space-y-4">
+    <div className="admin-stack">
+      <form onSubmit={handleEvaluate} className="admin-stack" style={{ gap: 16 }}>
         <div>
-          <label className="mb-1 block text-sm font-medium text-zinc-300">
-            Question
-          </label>
+          <label className="admin-label">Question</label>
           <textarea
             value={question}
             onChange={(e) => setQuestion(e.target.value)}
             placeholder="e.g. What are the latest RBI NBFC guidelines?"
             rows={2}
             maxLength={2000}
-            className="w-full rounded-xl bg-[#2f2f2f] px-4 py-3 text-white placeholder-zinc-500 outline-none focus:ring-1 focus:ring-zinc-600"
+            className="admin-textarea"
           />
         </div>
 
-        <div className="grid gap-4 md:grid-cols-2">
+        <div className="admin-grid cols-2-md">
           <div>
-            <label className="mb-1 block text-sm font-medium text-zinc-300">
-              Ground Truth <span className="text-zinc-500">(optional)</span>
+            <label className="admin-label">
+              Ground Truth <span className="hint">(optional)</span>
             </label>
             <textarea
               value={groundTruth}
@@ -98,51 +113,46 @@ export default function EvaluateTab() {
               placeholder="Reference answer for comparison..."
               rows={2}
               maxLength={5000}
-              className="w-full rounded-xl bg-[#2f2f2f] px-4 py-3 text-sm text-white placeholder-zinc-500 outline-none focus:ring-1 focus:ring-zinc-600"
+              className="admin-textarea"
             />
           </div>
           <div>
-            <label className="mb-1 block text-sm font-medium text-zinc-300">
-              Source Filter <span className="text-zinc-500">(optional)</span>
+            <label className="admin-label">
+              Source Filter <span className="hint">(optional)</span>
             </label>
             <select
               value={sourceFilter}
               onChange={(e) => setSourceFilter(e.target.value)}
-              className="w-full rounded-xl bg-[#2f2f2f] px-4 py-3 text-sm text-white outline-none focus:ring-1 focus:ring-zinc-600"
+              className="admin-select"
             >
               <option value="">All sources</option>
               <option value="rbi">RBI</option>
               <option value="sebi">SEBI</option>
               <option value="mca">MCA</option>
               <option value="irdai">IRDAI</option>
-              <option value="egazette">E-Gazette</option>
+              <option value="egazette">e-Gazette</option>
             </select>
           </div>
         </div>
 
-        {/* Baselines toggle */}
         <div>
-          <label className="mb-2 block text-sm font-medium text-zinc-300">
-            Compare against
-          </label>
-          <div className="flex gap-4">
-            <label className="flex items-center gap-2 rounded-xl bg-[#2f2f2f] px-4 py-2.5">
+          <label className="admin-label">Compare against</label>
+          <div className="admin-baseline-row">
+            <label className="admin-baseline-card">
               <input
                 type="checkbox"
                 checked={baselines.includes("gpt")}
                 onChange={() => toggleBaseline("gpt")}
-                className="h-4 w-4 rounded"
               />
-              <span className="text-sm text-orange-400 font-medium">GPT</span>
+              <span style={{ color: COLORS.gpt, fontWeight: 500 }}>GPT</span>
             </label>
-            <label className="flex items-center gap-2 rounded-xl bg-[#2f2f2f] px-4 py-2.5">
+            <label className="admin-baseline-card">
               <input
                 type="checkbox"
                 checked={baselines.includes("gemini")}
                 onChange={() => toggleBaseline("gemini")}
-                className="h-4 w-4 rounded"
               />
-              <span className="text-sm text-blue-400 font-medium">Gemini</span>
+              <span style={{ color: COLORS.gemini, fontWeight: 500 }}>Gemini</span>
             </label>
           </div>
         </div>
@@ -150,158 +160,142 @@ export default function EvaluateTab() {
         <button
           type="submit"
           disabled={loading || !question.trim() || baselines.length === 0}
-          className="rounded-xl bg-white px-6 py-2.5 text-sm font-semibold text-black transition-colors hover:bg-zinc-200 disabled:opacity-30"
+          className="btn btn-primary"
         >
           {loading ? "Evaluating..." : "Run & Save"}
         </button>
       </form>
 
       {loading && (
-        <div className="flex flex-col items-center gap-3 py-8">
-          <LoadingDots />
-          <p className="text-sm text-zinc-400">
-            Running {baselinesLabel} + judge evaluation...
-          </p>
+        <div className="empty-state">
+          Running {baselinesLabel} + judge evaluation...
         </div>
       )}
 
       {error && <ErrorBox message={error} />}
 
       {r && (
-        <div className="rounded-xl bg-[#2f2f2f] p-5">
-          <div className="mb-4 flex flex-wrap items-center gap-4">
-            <div className="min-w-0 flex-1">
-              <p className="text-sm text-zinc-400">Question</p>
-              <p className="mt-0.5 font-medium">{r.question}</p>
+        <div className="card" style={{ padding: 20, display: "flex", flexDirection: "column", gap: 16 }}>
+          <div className="admin-summary">
+            <div className="admin-summary-q">
+              <p className="admin-summary-q-label">Question</p>
+              <p className="admin-summary-q-text">{r.question}</p>
             </div>
-            <div className="flex gap-5 text-center">
-              <div>
-                <p className="text-2xl font-bold text-emerald-400">
+            <div className="admin-summary-stats">
+              <div className="admin-stat-box">
+                <div className="admin-stat-box-value" style={{ color: COLORS.rag }}>
                   {r.rag_eval.average_score.toFixed(1)}
-                </p>
-                <p className="text-xs text-zinc-400">RAG</p>
+                </div>
+                <div className="admin-stat-box-label">RAG</div>
               </div>
               {hasGpt && (
-                <div>
-                  <p className="text-2xl font-bold text-orange-400">
+                <div className="admin-stat-box">
+                  <div className="admin-stat-box-value" style={{ color: COLORS.gpt }}>
                     {r.vanilla_gpt_eval!.average_score.toFixed(1)}
-                  </p>
-                  <p className="text-xs text-zinc-400">GPT</p>
+                  </div>
+                  <div className="admin-stat-box-label">GPT</div>
                 </div>
               )}
               {hasGemini && (
-                <div>
-                  <p className="text-2xl font-bold text-blue-400">
+                <div className="admin-stat-box">
+                  <div className="admin-stat-box-value" style={{ color: COLORS.gemini }}>
                     {r.vanilla_gemini_eval!.average_score.toFixed(1)}
-                  </p>
-                  <p className="text-xs text-zinc-400">Gemini</p>
+                  </div>
+                  <div className="admin-stat-box-label">Gemini</div>
                 </div>
               )}
               {r.rag_advantage_vs_gpt != null && (
-                <div className="border-l border-zinc-700 pl-5">
-                  <p
-                    className={`text-2xl font-bold ${
-                      r.rag_advantage_vs_gpt > 0
-                        ? "text-emerald-400"
-                        : r.rag_advantage_vs_gpt < 0
-                          ? "text-red-400"
-                          : "text-zinc-400"
-                    }`}
+                <div className="admin-stat-box admin-divider">
+                  <div
+                    className="admin-stat-box-value"
+                    style={{ color: advantageClass(r.rag_advantage_vs_gpt) }}
                   >
                     {r.rag_advantage_vs_gpt > 0 ? "+" : ""}
                     {r.rag_advantage_vs_gpt.toFixed(1)}
-                  </p>
-                  <p className="text-xs text-zinc-400">vs GPT</p>
+                  </div>
+                  <div className="admin-stat-box-label">vs GPT</div>
                 </div>
               )}
               {r.rag_advantage_vs_gemini != null && (
-                <div>
-                  <p
-                    className={`text-2xl font-bold ${
-                      r.rag_advantage_vs_gemini > 0
-                        ? "text-emerald-400"
-                        : r.rag_advantage_vs_gemini < 0
-                          ? "text-red-400"
-                          : "text-zinc-400"
-                    }`}
+                <div className="admin-stat-box admin-divider">
+                  <div
+                    className="admin-stat-box-value"
+                    style={{ color: advantageClass(r.rag_advantage_vs_gemini) }}
                   >
                     {r.rag_advantage_vs_gemini > 0 ? "+" : ""}
                     {r.rag_advantage_vs_gemini.toFixed(1)}
-                  </p>
-                  <p className="text-xs text-zinc-400">vs Gemini</p>
+                  </div>
+                  <div className="admin-stat-box-label">vs Gemini</div>
                 </div>
               )}
             </div>
           </div>
 
-          <table className="w-full text-sm">
-            <thead>
-              <tr className="border-b border-zinc-700 text-left text-xs uppercase tracking-wide text-zinc-400">
-                <th className="py-2 pr-4">Criterion</th>
-                <th className="px-3 py-2 text-center">RAG</th>
-                {hasGpt && <th className="px-3 py-2 text-center">GPT</th>}
-                {hasGemini && <th className="px-3 py-2 text-center">Gemini</th>}
-                {hasGpt && <th className="px-2 py-2 text-center">vs GPT</th>}
-                {hasGemini && <th className="py-2 pl-2 text-center">vs Gemini</th>}
-              </tr>
-            </thead>
-            <tbody>
-              {r.rag_eval.scores.map((rs: CriterionScore, i: number) => {
-                const gs = r.vanilla_gpt_eval?.scores[i];
-                const ges = r.vanilla_gemini_eval?.scores[i];
-                const dGpt = rs.score - (gs?.score ?? 0);
-                const dGem = rs.score - (ges?.score ?? 0);
-                return (
-                  <tr key={rs.criterion} className="border-b border-zinc-800">
-                    <td className="py-2 pr-4 text-zinc-300">{rs.criterion}</td>
-                    <td className="px-3 py-2 text-center">{rs.score}</td>
-                    {hasGpt && (
-                      <td className="px-3 py-2 text-center">
-                        {gs?.score ?? "\u2014"}
-                      </td>
-                    )}
-                    {hasGemini && (
-                      <td className="px-3 py-2 text-center">
-                        {ges?.score ?? "\u2014"}
-                      </td>
-                    )}
-                    {hasGpt && (
-                      <td className="px-2 py-2 text-center">
-                        <span
-                          className={`font-semibold ${
-                            dGpt > 0
-                              ? "text-emerald-400"
-                              : dGpt < 0
-                                ? "text-red-400"
-                                : "text-zinc-500"
-                          }`}
-                        >
-                          {dGpt > 0 ? "+" : ""}
-                          {dGpt}
-                        </span>
-                      </td>
-                    )}
-                    {hasGemini && (
-                      <td className="py-2 pl-2 text-center">
-                        <span
-                          className={`font-semibold ${
-                            dGem > 0
-                              ? "text-emerald-400"
-                              : dGem < 0
-                                ? "text-red-400"
-                                : "text-zinc-500"
-                          }`}
-                        >
-                          {dGem > 0 ? "+" : ""}
-                          {dGem}
-                        </span>
-                      </td>
-                    )}
-                  </tr>
-                );
-              })}
-            </tbody>
-          </table>
+          <div className="admin-table-wrap">
+            <table className="admin-table">
+              <thead>
+                <tr>
+                  <th>Criterion</th>
+                  <th className="center">RAG</th>
+                  {hasGpt && <th className="center">GPT</th>}
+                  {hasGemini && <th className="center">Gemini</th>}
+                  {hasGpt && <th className="center">vs GPT</th>}
+                  {hasGemini && <th className="center">vs Gemini</th>}
+                </tr>
+              </thead>
+              <tbody>
+                {r.rag_eval.scores.map((rs: CriterionScore, i: number) => {
+                  const gs = r.vanilla_gpt_eval?.scores[i];
+                  const ges = r.vanilla_gemini_eval?.scores[i];
+                  const dGpt = rs.score - (gs?.score ?? 0);
+                  const dGem = rs.score - (ges?.score ?? 0);
+                  return (
+                    <tr key={rs.criterion} style={{ cursor: "default" }}>
+                      <td>{rs.criterion}</td>
+                      <td className="center">{rs.score}</td>
+                      {hasGpt && <td className="center">{gs?.score ?? "\u2014"}</td>}
+                      {hasGemini && <td className="center">{ges?.score ?? "\u2014"}</td>}
+                      {hasGpt && (
+                        <td className="center">
+                          <span
+                            style={{
+                              fontWeight: 600,
+                              color: advantageClass(dGpt),
+                            }}
+                          >
+                            {dGpt > 0 ? "+" : ""}
+                            {dGpt}
+                          </span>
+                        </td>
+                      )}
+                      {hasGemini && (
+                        <td className="center">
+                          <span
+                            style={{
+                              fontWeight: 600,
+                              color: advantageClass(dGem),
+                            }}
+                          >
+                            {dGem > 0 ? "+" : ""}
+                            {dGem}
+                          </span>
+                        </td>
+                      )}
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
+
+          {r.eval_run_id && (
+            <Link
+              href={`/evaluate/${r.eval_run_id}`}
+              className="admin-view-link btn btn-outline"
+            >
+              View full evaluation details
+            </Link>
+          )}
         </div>
       )}
     </div>
