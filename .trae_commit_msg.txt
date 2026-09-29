@@ -1,16 +1,16 @@
-Dashboard + shell + posture + severity labels + notifications fallback fixes
+Circulars list page: RSC crash fix + 5 UX fixes
 
-- Header: root "/" shows "Dashboard"; /clients/:id shows "Client Profile"
-- Sidebar: footer stays in-viewport via sidebar-nav min-height:0 + styled scrollbar
-- Notifications API: 180d window, fallback query for demo releasedAt=null rows,
-  coalesce releasedAt ?? createdAt, typed NotifRow + payload guard, unauthed
-- Dashboard: "With critical/high items" label, fixed plural "acts", empty-state
-  CTA link -> /circulars, deadlines renamed to "Upcoming & overdue deadlines"
-  with helper subtitle
-- Client/Steelvine: posture badge moved inline into subtitle with bullet sep
-- Severity pills ProperCase everywhere via shared severityLabel/
-  severityPriorityClass helpers in lib/utils.ts (bell, dashboard cards,
-  deadlines pills, circulars list + filter, circular detail impact rows)
-- Demo data releasedAt shifted to last 6 days so dashboard 7-window shows 6
-  recent circular cards with client pills (not empty)
-- Added NEXTAUTH_SECRET + AUTH_SECRET to .env to fix MissingSecret on restart
+- Fix: removed inline onFocus/onBlur handlers (RSC cannot pass event handlers
+  to client elements) -> CSS :focus rule on .circulars-search; replaced Reset
+  button onClick=window.location.href with a <Link>
+- Widened screen max-width 920px -> 1200px to match dashboard convention
+- Stripped duplicate agency prefix from circularNumber when it matches the
+  source tag (helper stripCircularNumberPrefix in utils.ts)
+- Deadline display: raw "N days" -> "Due in Nd · <date>" / "Overdue Nd ·
+  <date>" / "Today · <date>" with overdue red, today amber, dueSoon bold
+  (helper deadlineFromPublished with DeadlineInfo type)
+- Client pills clickable -> wrapped each in <Link href="/clients/:id"> with
+  a.client-pill-link hover style (accent-bg -> filled accent)
+- Sort selector added (Latest first / Most critical / Urgent first) with
+  sortCirculars() in-memory sort; sort param included in filterSummary when
+  non-default; impact map now saves clientId alongside name/severity

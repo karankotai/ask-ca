@@ -418,6 +418,17 @@ body {
   color: var(--accent);
 }
 
+a.client-pill-link {
+  text-decoration: none;
+  transition: background 120ms ease, color 120ms ease, transform 120ms ease;
+  display: inline-block;
+}
+a.client-pill-link:hover {
+  background: var(--accent);
+  color: #fff;
+}
+a.client-pill-link:active { transform: translateY(0.5px); }
+
 /* Buttons */
 .btn {
   padding: 9px 18px;
@@ -1039,6 +1050,9 @@ body {
   outline: none;
 }
 .filters select:focus { border-color: var(--accent); }
+
+.circulars-search { transition: border-color 120ms ease; }
+.circulars-search:focus { border-color: var(--accent); }
 
 .filters .progress {
   margin-left: auto;

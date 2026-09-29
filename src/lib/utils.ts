@@ -153,3 +153,60 @@ function capitalizeFirst(s: string): string {
   if (!s) return s;
   return s.charAt(0).toUpperCase() + s.slice(1);
 }
+
+// --- Deadline Display ------------------------------------------------------
+export type DeadlineInfo = {
+  absolute: string;
+  relative: string;
+  isOverdue: boolean;
+  isToday: boolean;
+  dueSoon: boolean;
+} | null;
+
+const MONTHS = [
+  "Jan", "Feb", "Mar", "Apr", "May", "Jun",
+  "Jul", "Aug", "Sep", "Oct", "Nov", "Dec",
+];
+
+function fmtDate(d: Date): string {
+  return `${d.getDate()} ${MONTHS[d.getMonth()]} ${d.getFullYear()}`;
+}
+
+export function deadlineFromPublished(
+  publishedAt: Date | string | null | undefined,
+  deadlineDays: number | null | undefined,
+  now: Date = new Date(),
+): DeadlineInfo {
+  if (!publishedAt || !deadlineDays || deadlineDays <= 0) return null;
+  const base = typeof publishedAt === "string" ? new Date(publishedAt) : publishedAt;
+  if (Number.isNaN(base.getTime())) return null;
+  const due = new Date(base.getTime() + deadlineDays * 24 * 60 * 60 * 1000);
+  const msPerDay = 24 * 60 * 60 * 1000;
+  const startOfToday = Date.UTC(now.getFullYear(), now.getMonth(), now.getDate());
+  const startOfDue = Date.UTC(due.getFullYear(), due.getMonth(), due.getDate());
+  const diffDays = Math.round((startOfDue - startOfToday) / msPerDay);
+  let relative = `${diffDays}d`;
+  let isOverdue = false;
+  let isToday = false;
+  let dueSoon = false;
+  if (diffDays === 0) { relative = "Today"; isToday = true; dueSoon = true; }
+  else if (diffDays > 0) { relative = `Due in ${diffDays}d`; if (diffDays <= 7) dueSoon = true; }
+  else { relative = `Overdue ${Math.abs(diffDays)}d`; isOverdue = true; dueSoon = true; }
+  return { absolute: fmtDate(due), relative, isOverdue, isToday, dueSoon };
+}
+
+// --- Circular Number Display -----------------------------------------------
+export function stripCircularNumberPrefix(source: string | null | undefined, circularNumber: string | null | undefined): string {
+  if (!circularNumber) return "";
+  if (!source) return circularNumber;
+  const prefix = `${source}/`;
+  if (circularNumber.startsWith(prefix)) return circularNumber.slice(prefix.length);
+  const altPrefix = source.toUpperCase().replace(/\s+/g, "_") + "/";
+  if (circularNumber.startsWith(altPrefix)) return circularNumber.slice(altPrefix.length);
+  const simplePrefix = source.replace(/\s+/g, "").toUpperCase() + "/";
+  if (circularNumber.toUpperCase().startsWith(simplePrefix)) {
+    const slashIdx = circularNumber.indexOf("/");
+    return slashIdx >= 0 ? circularNumber.slice(slashIdx + 1) : circularNumber;
+  }
+  return circularNumber;
+}
