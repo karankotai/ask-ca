@@ -212,17 +212,17 @@ export default function AnalyzePage() {
   };
 
   return (
-    <div className="screen" style={{ maxWidth: 980, margin: "0 auto" }}>
+    <div className="screen" style={{ maxWidth: 1200, margin: "0 auto" }}>
       <div className="page-row">
         <div>
-          <div className="page-title">Circular Analysis</div>
+          <div className="page-title">Analyze a circular</div>
           <div className="page-subtitle">
             Paste circular text or upload a PDF to get a structured CA analysis.
           </div>
         </div>
       </div>
 
-      <div className="channel-toggle" style={{ marginBottom: 20 }}>
+      <div className="cal-view-toggle" style={{ marginBottom: 20 }}>
         <button
           type="button"
           onClick={() => setInputMode("text")}
@@ -355,8 +355,13 @@ export default function AnalyzePage() {
 
             {files.length > 1 && (
               <label
-                className="flex items-center gap-3 cursor-pointer"
-                style={{ padding: "4px 2px" }}
+                style={{
+                  display: "flex",
+                  alignItems: "center",
+                  gap: 12,
+                  padding: "4px 2px",
+                  cursor: "pointer",
+                }}
               >
                 <button
                   type="button"
@@ -501,7 +506,9 @@ export default function AnalyzePage() {
       {historyLoading && !history.length ? (
         <div className="empty-state">Loading history…</div>
       ) : history.length === 0 ? (
-        <div className="empty-state">No analyses yet.</div>
+        <div className="empty-state">
+          No analyses yet. Submit a circular using the form above, and past results will appear here.
+        </div>
       ) : (
         <>
           <div className="card" style={{ padding: 0, marginBottom: 16 }}>
@@ -520,14 +527,14 @@ export default function AnalyzePage() {
                       onClick={() => handleRowClick(item.id)}
                       style={{ cursor: "pointer" }}
                     >
-                      <td className="whitespace-nowrap px-4 py-3" style={{ color: "var(--text-mid)" }}>
+                      <td style={{ color: "var(--text-mid)", whiteSpace: "nowrap" }}>
                         {new Date(item.createdAt).toLocaleDateString("en-IN", {
                           day: "2-digit",
                           month: "short",
                           year: "numeric",
                         })}
                       </td>
-                      <td className="client max-w-xs truncate">
+                      <td className="client">
                         {item.title || "Untitled"}
                       </td>
                       <td>

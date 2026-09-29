@@ -984,6 +984,22 @@ a.client-pill-link:active { transform: translateY(0.5px); }
 .cal-view-toggle a.active { background: var(--bg-white); color: var(--accent); box-shadow: var(--shadow-sm); }
 .cal-view-toggle a:hover:not(.active) { color: var(--text-dark); }
 
+.cal-view-toggle button {
+  padding: 6px 14px;
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--text-mid);
+  border-radius: 6px;
+  cursor: pointer;
+  border: none;
+  background: transparent;
+  font-family: inherit;
+  transition: all 0.12s;
+}
+
+.cal-view-toggle button.active { background: var(--bg-white); color: var(--accent); box-shadow: var(--shadow-sm); }
+.cal-view-toggle button:hover:not(.active) { color: var(--text-dark); }
+
 /* List view (calendar list table) */
 .list-table { width: 100%; border-collapse: collapse; font-size: 13px; }
 
@@ -1034,6 +1050,31 @@ a.client-pill-link:active { transform: translateY(0.5px); }
 .status-in_progress { background: var(--info-bg); color: var(--info); }
 .status-done { background: var(--success-bg); color: var(--success); }
 .status-overdue { background: var(--danger-bg); color: var(--danger); }
+
+.app-error-shell {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 48px 16px;
+}
+
+.app-error-card {
+  width: 100%;
+  max-width: 480px;
+  background: var(--bg-white);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  padding: 32px 24px;
+  text-align: center;
+  box-shadow: var(--shadow-sm);
+}
+
+.app-error-card h2 { font-size: 18px; font-weight: 700; color: var(--text-dark); margin: 0 0 8px; }
+.app-error-card p { font-size: 13px; color: var(--text-mid); margin: 0 0 24px; line-height: 1.6; }
+.app-error-actions { display: flex; flex-direction: column; gap: 10px; justify-content: center; }
+@media (min-width: 640px) {
+  .app-error-actions { flex-direction: row; }
+}
 
 /* Filters bar */
 .filters {
