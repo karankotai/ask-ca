@@ -1,16 +1,29 @@
-Circulars list page: RSC crash fix + 5 UX fixes
+Circular detail + impact subpage fixes
 
-- Fix: removed inline onFocus/onBlur handlers (RSC cannot pass event handlers
-  to client elements) -> CSS :focus rule on .circulars-search; replaced Reset
-  button onClick=window.location.href with a <Link>
-- Widened screen max-width 920px -> 1200px to match dashboard convention
-- Stripped duplicate agency prefix from circularNumber when it matches the
-  source tag (helper stripCircularNumberPrefix in utils.ts)
-- Deadline display: raw "N days" -> "Due in Nd · <date>" / "Overdue Nd ·
-  <date>" / "Today · <date>" with overdue red, today amber, dueSoon bold
-  (helper deadlineFromPublished with DeadlineInfo type)
-- Client pills clickable -> wrapped each in <Link href="/clients/:id"> with
-  a.client-pill-link hover style (accent-bg -> filled accent)
-- Sort selector added (Latest first / Most critical / Urgent first) with
-  sortCirculars() in-memory sort; sort param included in filterSummary when
-  non-default; impact map now saves clientId alongside name/severity
+Circular detail page (circulars/[id]/page.tsx):
+- A1: Widen screen max-width 920px -> 1200px convention
+- A2: Deadline semantics: use deadlineFromPublished(releasedAt, N)
+  instead of new Date() + N; add overdue/today/dueSoon color/weight
+  on info-chip + subtitle line
+- A3: Severity capitalize text -> shared severityLabel() +
+  severityPriorityClass() pill; apply pill in page-row header + info-chip
+- A4: Bare <h1> title -> page-row with page-title + page-subtitle
+  containing source/circularNumber/effective/deadline with semantic
+  deadline coloring + aligned severity pill on right
+- A5: Counter "N of M" -> "{N} affected · {M} total scanned"
+- A6: Duplicate agency prefix in circular id line; stripCircularNumberPrefix
+  so MCA tag + MCA/2026/.. => MCA tag + 2026/..
+
+Impact subpage (circulars/[id]/impact/page.tsx):
+- B1: Add max-width: 1200px to .screen (was unconstrained full width)
+- B2: Add deadlineFromPublished info + severity pill to page-row,
+  match semantic coloring/weight from list/detail pages
+- B3: Breadcrumb: "← Back to circular" -> "← Back to circular · All circulars"
+  double-link (to detail + to /circulars list)
+
+Files:
+- src/app/circulars/[id]/page.tsx: A1-A6 fixes, import deadlineFromPublished
+  + severity helpers + stripCircularNumberPrefix from utils.ts
+- src/app/circulars/[id]/impact/page.tsx: B1-B3 fixes, import deadlineFromPublished
+  from utils.ts
+- npx tsc --noEmit: 0 errors

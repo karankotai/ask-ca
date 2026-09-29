@@ -1,5 +1,10 @@
 import { prisma } from "@/lib/prisma";
-import { severityLabel, severityPriorityClass } from "@/lib/utils";
+import {
+  severityLabel,
+  severityPriorityClass,
+  deadlineFromPublished,
+  type DeadlineInfo,
+} from "@/lib/utils";
 import { notFound } from "next/navigation";
 import Link from "next/link";
 import { Send } from "lucide-react";
@@ -60,19 +65,44 @@ export default async function ImpactPage({ params, searchParams }: {
       })
     : [];
 
+  const deadlineInfo: DeadlineInfo = deadlineFromPublished(
+    circular.releasedAt ?? circular.createdAt,
+    circular.deadlineDays,
+  );
+
   return (
-    <div className="screen">
-      <div style={{ marginBottom: 18 }}>
+    <div className="screen" style={{ maxWidth: 1200, margin: "0 auto" }}>
+      <div style={{ marginBottom: 18, display: "flex", gap: 12, alignItems: "center", flexWrap: "wrap" }}>
         <Link href={`/circulars/${id}`} style={{ fontSize: 13, color: "var(--accent)", textDecoration: "none" }}>
           ← Back to circular
+        </Link>
+        <span style={{ fontSize: 12, color: "var(--text-light)" }}>·</span>
+        <Link href="/circulars" style={{ fontSize: 13, color: "var(--accent)", textDecoration: "none" }}>
+          All circulars
         </Link>
       </div>
 
       <div className="page-row">
         <div>
           <div className="page-title" style={{ fontSize: 20 }}>{circular.title}</div>
-          <div className="page-subtitle">{circular.source} · {circular.date} · {circular.affectedActs.join(", ")}</div>
+          <div className="page-subtitle">
+            {circular.source} · {circular.date} · {circular.affectedActs.join(", ")}
+            {deadlineInfo && (
+              <>
+                {" · "}
+                <span style={{
+                  color: deadlineInfo.isOverdue ? "var(--danger)" : deadlineInfo.isToday ? "var(--warning)" : "inherit",
+                  fontWeight: deadlineInfo.dueSoon ? 600 : 400,
+                }}>
+                  {deadlineInfo.relative} · {deadlineInfo.absolute}
+                </span>
+              </>
+            )}
+          </div>
         </div>
+        <span className={severityPriorityClass(circular.severity)} style={{ padding: "6px 12px", fontSize: 12 }}>
+          {severityLabel(circular.severity)}
+        </span>
       </div>
 
       <div className="impact-grid">

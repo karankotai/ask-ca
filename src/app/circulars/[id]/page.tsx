@@ -4,6 +4,13 @@ import Link from "next/link";
 import { Calendar, Building2, Clock, AlertTriangle, Sparkles, Users } from "lucide-react";
 import LiveDropTimerWrapper from "./LiveDropTimerWrapper";
 import type { ImpactPayload } from "@/types/impact";
+import {
+  severityLabel,
+  severityPriorityClass,
+  deadlineFromPublished,
+  stripCircularNumberPrefix,
+  type DeadlineInfo,
+} from "@/lib/utils";
 
 export const dynamic = "force-dynamic";
 
@@ -63,28 +70,54 @@ export default async function CircularDetailPage({ params }: { params: Promise<{
   const tag = SOURCE_TAG[circular.source] ?? "tag-default";
   const releasedAt = circular.releasedAt ?? circular.createdAt;
   const ago = timeAgo(releasedAt);
+  const circularIdShort = stripCircularNumberPrefix(circular.source, circular.circularNumber);
 
-  const deadline = circular.deadlineDays
-    ? new Date(new Date().getTime() + circular.deadlineDays * 24 * 60 * 60 * 1000).toLocaleDateString("en-IN", {
-        day: "numeric", month: "short", year: "numeric",
-      })
-    : "—";
+  const deadlineInfo: DeadlineInfo = deadlineFromPublished(releasedAt, circular.deadlineDays);
 
   return (
-    <div className="screen" style={{ maxWidth: 920, margin: "0 auto" }}>
+    <div className="screen" style={{ maxWidth: 1200, margin: "0 auto" }}>
       <div style={{ marginBottom: 18 }}>
         <Link href="/circulars" style={{ fontSize: 13, color: "var(--accent)", textDecoration: "none" }}>← Back to circulars</Link>
       </div>
 
-      <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 12 }}>
+      <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 12, flexWrap: "wrap" }}>
         {(isLiveDrop || ago.includes("min") || ago.includes("hours")) && <span className="new-badge">New</span>}
         <span className={`tag ${tag}`}>{circular.source}</span>
-        <span style={{ fontSize: 12, color: "var(--text-light)" }}>{circular.circularNumber}</span>
+        {circularIdShort && <span style={{ fontSize: 12, color: "var(--text-light)" }}>{circularIdShort}</span>}
         <span style={{ fontSize: 12, color: "var(--text-light)" }}>·</span>
         <span style={{ fontSize: 12, color: "var(--text-light)" }}>Published {ago}</span>
       </div>
 
-      <h1 style={{ fontSize: 22, fontWeight: 700, lineHeight: 1.3, marginBottom: 18 }}>{circular.title}</h1>
+      <div className="page-row" style={{ marginBottom: 18 }}>
+        <div>
+          <div className="page-title" style={{ fontSize: 22 }}>{circular.title}</div>
+          <div className="page-subtitle">
+            {circular.source}
+            {circular.circularNumber && <> · {circular.circularNumber}</>}
+            {circular.date && <> · Effective {circular.date}</>}
+            {deadlineInfo && (
+              <>
+                {" · "}
+                <span style={{
+                  color: deadlineInfo.isOverdue ? "var(--danger)" : deadlineInfo.isToday ? "var(--warning)" : "inherit",
+                  fontWeight: deadlineInfo.dueSoon ? 600 : 400,
+                }}>
+                  {deadlineInfo.relative} · {deadlineInfo.absolute}
+                </span>
+              </>
+            )}
+          </div>
+        </div>
+        {deadlineInfo ? (
+          <span className={severityPriorityClass(circular.severity)} style={{ padding: "6px 12px", fontSize: 12 }}>
+            {severityLabel(circular.severity)}
+          </span>
+        ) : (
+          <span className={severityPriorityClass(circular.severity)} style={{ padding: "6px 12px", fontSize: 12 }}>
+            {severityLabel(circular.severity)}
+          </span>
+        )}
+      </div>
 
       {circular.aiSummary && (
         <div className="ai-card">
@@ -107,11 +140,20 @@ export default async function CircularDetailPage({ params }: { params: Promise<{
         </div>
         <div className="info-chip">
           <div className="ic-label"><Clock size={14} /> Deadline</div>
-          <div className="ic-value">{deadline}</div>
+          <div className="ic-value" style={{
+            color: deadlineInfo?.isOverdue ? "var(--danger)" : deadlineInfo?.isToday ? "var(--warning)" : "inherit",
+            fontWeight: deadlineInfo?.dueSoon ? 600 : 400,
+          }}>
+            {deadlineInfo ? `${deadlineInfo.relative} · ${deadlineInfo.absolute}` : "—"}
+          </div>
         </div>
         <div className="info-chip">
           <div className="ic-label"><AlertTriangle size={14} /> Severity</div>
-          <div className="ic-value" style={{ textTransform: "capitalize" }}>{circular.severity ?? "—"}</div>
+          <div className="ic-value" style={{ paddingTop: 2 }}>
+            <span className={severityPriorityClass(circular.severity)} style={{ padding: "3px 9px", fontSize: 11 }}>
+              {severityLabel(circular.severity)}
+            </span>
+          </div>
         </div>
       </div>
 
@@ -122,7 +164,7 @@ export default async function CircularDetailPage({ params }: { params: Promise<{
             <span>Affected Clients</span>
           </div>
           <span className="affected-count">
-            {affectedClients.length} of {impacts.length}
+            {affectedClients.length} affected · {impacts.length} total scanned
           </span>
         </div>
         <div className="affected-list">
