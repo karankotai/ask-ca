@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect, useCallback, Fragment } from "react";
+import { severityLabel, severityPriorityClass } from "@/lib/utils";
 
 interface Extraction {
   circular_reference?: string;
@@ -48,50 +49,41 @@ interface Obligation {
 }
 
 const CHAIN_LABELS: Record<string, string> = {
-  repeal: "REPEALED",
-  supersession: "SUPERSEDES",
-  amendment: "AMENDMENT",
+  repeal: "Repealed",
+  supersession: "Supersedes",
+  amendment: "Amendment",
 };
 
+function riskToSeverity(level: string): "critical" | "high" | "medium" | "low" {
+  const lvl = (level || "").toUpperCase();
+  if (lvl === "HIGH") return "high";
+  if (lvl === "MEDIUM") return "medium";
+  if (lvl === "LOW") return "low";
+  if (lvl === "CRITICAL") return "critical";
+  return "medium";
+}
+
 function RiskBadge({ level }: { level: string }) {
-  const cls =
-    level === "HIGH"
-      ? "priority priority-critical"
-      : level === "MEDIUM"
-      ? "priority priority-medium"
-      : level === "LOW"
-      ? "priority priority-low"
-      : "priority priority-low";
-  return <span className={cls}>{level} RISK</span>;
+  const sev = riskToSeverity(level);
+  return (
+    <span className={severityPriorityClass(sev)}>
+      {severityLabel(sev)} Risk
+    </span>
+  );
 }
 
 function ChainBadge({ type }: { type: string }) {
   const style: React.CSSProperties =
     type === "repeal"
-      ? {
-          background: "var(--danger-bg)",
-          color: "var(--danger)",
-        }
+      ? { background: "var(--danger-bg)", color: "var(--danger)" }
       : type === "supersession"
-      ? {
-          background: "var(--warning-bg)",
-          color: "var(--warning)",
-        }
+      ? { background: "var(--warning-bg)", color: "var(--warning)" }
       : type === "amendment"
-      ? {
-          background: "var(--info-bg)",
-          color: "var(--info)",
-        }
-      : {
-          background: "var(--bg-main)",
-          color: "var(--text-mid)",
-        };
+      ? { background: "var(--info-bg)", color: "var(--info)" }
+      : { background: "var(--bg-main)", color: "var(--text-mid)" };
   return (
-    <span
-      className="ml-2 inline-block rounded px-2.5 py-0.5 text-xs font-semibold"
-      style={style}
-    >
-      {CHAIN_LABELS[type] || type.toUpperCase()}
+    <span className="obl-chain-badge" style={style}>
+      {CHAIN_LABELS[type] || (type ? type[0].toUpperCase() + type.slice(1).toLowerCase() : "")}
     </span>
   );
 }
@@ -99,9 +91,7 @@ function ChainBadge({ type }: { type: string }) {
 function ObligationCard({ item }: { item: Obligation }) {
   const ext = item.extraction;
   const risk = ext.compliance_risk_level || "MEDIUM";
-  const [expandedObls, setExpandedObls] = useState<Set<number>>(
-    new Set([0, 1, 2])
-  );
+  const [expandedObls, setExpandedObls] = useState<Set<number>>(new Set([0, 1, 2]));
 
   const toggleObl = (i: number) => {
     setExpandedObls((prev) => {
@@ -113,13 +103,25 @@ function ObligationCard({ item }: { item: Obligation }) {
   };
 
   return (
-    <div className="card mb-6">
-      {/* Header */}
-      <div className="flex items-start justify-between gap-4 mb-3">
-        <div className="flex-1">
+    <div className="card" style={{ marginBottom: 24 }}>
+      <div
+        style={{
+          display: "flex",
+          alignItems: "flex-start",
+          justifyContent: "space-between",
+          gap: 16,
+          marginBottom: 12,
+        }}
+      >
+        <div style={{ flex: 1, minWidth: 0 }}>
           <h3
-            className="text-lg font-semibold"
-            style={{ color: "var(--text-dark)" }}
+            style={{
+              fontSize: 17,
+              fontWeight: 600,
+              color: "var(--text-dark)",
+              margin: 0,
+              lineHeight: 1.4,
+            }}
           >
             {ext.subject || item.title}
             {item.chain_type && <ChainBadge type={item.chain_type} />}
@@ -128,23 +130,16 @@ function ObligationCard({ item }: { item: Obligation }) {
         <RiskBadge level={risk} />
       </div>
 
-      {/* Metadata */}
-      <div className="grid grid-cols-3 gap-4 mb-4 text-sm">
+      <div className="obl-meta-grid">
         <div>
           <p style={{ color: "var(--text-mid)" }}>
-            <span
-              className="font-medium"
-              style={{ color: "var(--text-dark)" }}
-            >
+            <span style={{ fontWeight: 500, color: "var(--text-dark)" }}>
               Authority:
             </span>{" "}
             {ext.issuing_authority || "N/A"}
           </p>
           <p style={{ color: "var(--text-mid)" }}>
-            <span
-              className="font-medium"
-              style={{ color: "var(--text-dark)" }}
-            >
+            <span style={{ fontWeight: 500, color: "var(--text-dark)" }}>
               Circular:
             </span>{" "}
             {item.source_url ? (
@@ -152,13 +147,14 @@ function ObligationCard({ item }: { item: Obligation }) {
                 href={item.source_url}
                 target="_blank"
                 rel="noopener noreferrer"
-                style={{ color: "var(--accent)" }}
-                className="hover:underline"
+                style={{ color: "var(--accent)", textDecoration: "none" }}
+                onMouseEnter={(e) => (e.currentTarget.style.textDecoration = "underline")}
+                onMouseLeave={(e) => (e.currentTarget.style.textDecoration = "none")}
               >
                 {ext.circular_reference || "Link"}
               </a>
             ) : (
-              <span className="font-mono text-xs">
+              <span style={{ fontFamily: "monospace", fontSize: 12 }}>
                 {ext.circular_reference || "N/A"}
               </span>
             )}
@@ -166,19 +162,13 @@ function ObligationCard({ item }: { item: Obligation }) {
         </div>
         <div>
           <p style={{ color: "var(--text-mid)" }}>
-            <span
-              className="font-medium"
-              style={{ color: "var(--text-dark)" }}
-            >
+            <span style={{ fontWeight: 500, color: "var(--text-dark)" }}>
               Date Issued:
             </span>{" "}
             {ext.date_issued || "N/A"}
           </p>
           <p style={{ color: "var(--text-mid)" }}>
-            <span
-              className="font-medium"
-              style={{ color: "var(--text-dark)" }}
-            >
+            <span style={{ fontWeight: 500, color: "var(--text-dark)" }}>
               Effective:
             </span>{" "}
             {ext.effective_date || "N/A"}
@@ -186,10 +176,7 @@ function ObligationCard({ item }: { item: Obligation }) {
         </div>
         <div>
           <p style={{ color: "var(--text-mid)" }}>
-            <span
-              className="font-medium"
-              style={{ color: "var(--text-dark)" }}
-            >
+            <span style={{ fontWeight: 500, color: "var(--text-dark)" }}>
               Risk Rationale:
             </span>{" "}
             {ext.risk_rationale || "N/A"}
@@ -197,30 +184,36 @@ function ObligationCard({ item }: { item: Obligation }) {
         </div>
       </div>
 
-      {/* Summary */}
-      {ext.summary && <div className="ai-card mb-4">{ext.summary}</div>}
+      {ext.summary && (
+        <div className="ai-card" style={{ marginBottom: 16 }}>
+          {ext.summary}
+        </div>
+      )}
 
-      {/* Regulatory Lineage */}
       {(item.repealed_by ||
         (ext.supersedes && ext.supersedes.length > 0) ||
         (ext.amendments_to && ext.amendments_to.length > 0)) && (
-        <div className="mb-4 space-y-2">
+        <div style={{ marginBottom: 16 }}>
           <p
-            className="text-sm font-medium"
-            style={{ color: "var(--text-dark)" }}
+            style={{
+              fontSize: 13,
+              fontWeight: 500,
+              color: "var(--text-dark)",
+              margin: "0 0 8px",
+            }}
           >
             Regulatory Lineage:
           </p>
           {item.repealed_by && (
             <div
-              className="rounded-lg px-4 py-3 text-sm"
+              className="obl-lineage-box"
               style={{
                 border: "2px solid var(--danger)",
                 background: "var(--danger-bg)",
               }}
             >
-              <span className="font-bold" style={{ color: "var(--danger)" }}>
-                REPEALED
+              <span style={{ fontWeight: 700, color: "var(--danger)" }}>
+                Repealed
               </span>
               <span style={{ color: "var(--text-dark)" }}>
                 {" "}
@@ -232,21 +225,23 @@ function ObligationCard({ item }: { item: Obligation }) {
           {ext.supersedes?.map((s, i) => (
             <div
               key={i}
-              className="rounded-lg px-4 py-3 text-sm"
+              className="obl-lineage-box"
               style={{
                 border: "2px solid var(--warning)",
                 background: "var(--warning-bg)",
               }}
             >
-              <span className="font-bold" style={{ color: "var(--warning)" }}>
-                SUPERSEDES
+              <span style={{ fontWeight: 700, color: "var(--warning)" }}>
+                Supersedes
               </span>
               <span style={{ color: "var(--text-dark)" }}>
                 {" "}
                 —{" "}
                 <code
-                  className="rounded px-1.5 py-0.5 text-xs"
                   style={{
+                    borderRadius: 4,
+                    padding: "2px 6px",
+                    fontSize: 11,
                     background: "var(--bg-main)",
                     color: "var(--text-dark)",
                     border: "1px solid var(--border)",
@@ -261,14 +256,14 @@ function ObligationCard({ item }: { item: Obligation }) {
           {ext.amendments_to?.map((a, i) => (
             <div
               key={i}
-              className="rounded-lg px-4 py-3 text-sm"
+              className="obl-lineage-box"
               style={{
                 border: "2px solid var(--info)",
                 background: "var(--info-bg)",
               }}
             >
-              <span className="font-bold" style={{ color: "var(--info)" }}>
-                AMENDS
+              <span style={{ fontWeight: 700, color: "var(--info)" }}>
+                Amends
               </span>
               <span style={{ color: "var(--text-dark)" }}>
                 {" "}
@@ -279,16 +274,19 @@ function ObligationCard({ item }: { item: Obligation }) {
         </div>
       )}
 
-      {/* Applies to */}
       {ext.applies_to && ext.applies_to.length > 0 && (
-        <div className="mb-4">
+        <div style={{ marginBottom: 16 }}>
           <p
-            className="mb-2 text-sm font-medium"
-            style={{ color: "var(--text-dark)" }}
+            style={{
+              fontSize: 13,
+              fontWeight: 500,
+              color: "var(--text-dark)",
+              margin: "0 0 8px",
+            }}
           >
             Applies to:
           </p>
-          <div className="flex flex-wrap gap-2">
+          <div className="flex-wrap-row">
             {ext.applies_to.map((a, i) => (
               <span key={i} className="client-pill">
                 {a.entity_type}
@@ -298,62 +296,58 @@ function ObligationCard({ item }: { item: Obligation }) {
         </div>
       )}
 
-      {/* Obligations */}
       {ext.obligations && ext.obligations.length > 0 && (
-        <div className="mb-4">
+        <div style={{ marginBottom: 16 }}>
           <p
-            className="mb-2 text-sm font-medium"
-            style={{ color: "var(--text-dark)" }}
+            style={{
+              fontSize: 13,
+              fontWeight: 500,
+              color: "var(--text-dark)",
+              margin: "0 0 8px",
+            }}
           >
             Compliance Obligations ({ext.obligations.length}):
           </p>
           <div className="client-list-card">
             {ext.obligations.map((obl, i) => (
               <div key={i} className="client-list-item">
-                <button
-                  onClick={() => toggleObl(i)}
-                  className="flex w-full items-center justify-between text-left text-sm"
-                >
-                  <span style={{ color: "var(--text-dark)" }}>
-                    {i + 1}. {obl.action.slice(0, 120)}
-                    {obl.action.length > 120 ? "..." : ""}
+                <button onClick={() => toggleObl(i)} className="obl-expand-btn">
+                  <span style={{ color: "var(--text-dark)", flex: 1, minWidth: 0 }}>
+                    {i + 1}. {obl.action.slice(0, 160)}
+                    {obl.action.length > 160 ? "…" : ""}
                   </span>
-                  <span
-                    className="ml-2"
-                    style={{ color: "var(--text-light)" }}
-                  >
+                  <span style={{ color: "var(--text-light)", flexShrink: 0 }}>
                     {expandedObls.has(i) ? "−" : "+"}
                   </span>
                 </button>
                 {expandedObls.has(i) && (
                   <div
-                    className="mt-3 pt-3"
-                    style={{ borderTop: "1px solid var(--border)" }}
+                    style={{
+                      marginTop: 12,
+                      paddingTop: 12,
+                      borderTop: "1px solid var(--border)",
+                    }}
                   >
-                    <div className="grid grid-cols-2 gap-3 text-sm">
+                    <div className="obl-detail-grid">
                       <div>
                         {obl.deadline && (
-                          <p style={{ color: "var(--text-mid)" }}>
-                            <span
-                              className="font-medium"
-                              style={{ color: "var(--text-dark)" }}
-                            >
+                          <p style={{ color: "var(--text-mid)", margin: "0 0 4px" }}>
+                            <span style={{ fontWeight: 500, color: "var(--text-dark)" }}>
                               Deadline:
                             </span>{" "}
                             {obl.deadline}
                           </p>
                         )}
                         {obl.form_or_filing && (
-                          <p style={{ color: "var(--text-mid)" }}>
-                            <span
-                              className="font-medium"
-                              style={{ color: "var(--text-dark)" }}
-                            >
+                          <p style={{ color: "var(--text-mid)", margin: "0 0 4px" }}>
+                            <span style={{ fontWeight: 500, color: "var(--text-dark)" }}>
                               Form:
                             </span>{" "}
                             <code
-                              className="rounded px-1.5 py-0.5 text-xs"
                               style={{
+                                borderRadius: 4,
+                                padding: "2px 6px",
+                                fontSize: 11,
                                 background: "var(--bg-main)",
                                 color: "var(--text-dark)",
                                 border: "1px solid var(--border)",
@@ -366,22 +360,16 @@ function ObligationCard({ item }: { item: Obligation }) {
                       </div>
                       <div>
                         {obl.penalty_for_non_compliance && (
-                          <p style={{ color: "var(--text-mid)" }}>
-                            <span
-                              className="font-medium"
-                              style={{ color: "var(--text-dark)" }}
-                            >
+                          <p style={{ color: "var(--text-mid)", margin: "0 0 4px" }}>
+                            <span style={{ fontWeight: 500, color: "var(--text-dark)" }}>
                               Penalty:
                             </span>{" "}
                             {obl.penalty_for_non_compliance}
                           </p>
                         )}
                         {obl.section_reference && (
-                          <p style={{ color: "var(--text-mid)" }}>
-                            <span
-                              className="font-medium"
-                              style={{ color: "var(--text-dark)" }}
-                            >
+                          <p style={{ color: "var(--text-mid)", margin: "0 0 4px" }}>
+                            <span style={{ fontWeight: 500, color: "var(--text-dark)" }}>
                               Section:
                             </span>{" "}
                             {obl.section_reference}
@@ -391,8 +379,12 @@ function ObligationCard({ item }: { item: Obligation }) {
                     </div>
                     {obl.notes && (
                       <p
-                        className="mt-2 text-xs"
-                        style={{ color: "var(--text-light)" }}
+                        style={{
+                          marginTop: 8,
+                          fontSize: 12,
+                          color: "var(--text-light)",
+                          margin: "8px 0 0",
+                        }}
                       >
                         Note: {obl.notes}
                       </p>
@@ -405,16 +397,19 @@ function ObligationCard({ item }: { item: Obligation }) {
         </div>
       )}
 
-      {/* Key thresholds */}
       {ext.key_thresholds && ext.key_thresholds.length > 0 && (
         <div>
           <p
-            className="mb-2 text-sm font-medium"
-            style={{ color: "var(--text-dark)" }}
+            style={{
+              fontSize: 13,
+              fontWeight: 500,
+              color: "var(--text-dark)",
+              margin: "0 0 8px",
+            }}
           >
             Key Thresholds:
           </p>
-          <div className="flex flex-wrap gap-2">
+          <div className="flex-wrap-row">
             {ext.key_thresholds.map((t, i) => (
               <span
                 key={i}
@@ -443,14 +438,12 @@ export default function ObligationsPage() {
   const [error, setError] = useState<string | null>(null);
   const [result, setResult] = useState<Obligation | null>(null);
 
-  // History
   const [history, setHistory] = useState<Obligation[]>([]);
   const [historyPage, setHistoryPage] = useState(1);
   const [historyTotalPages, setHistoryTotalPages] = useState(1);
   const [historyLoading, setHistoryLoading] = useState(false);
   const [expandedId, setExpandedId] = useState<number | null>(null);
-  const [expandedObligation, setExpandedObligation] =
-    useState<Obligation | null>(null);
+  const [expandedObligation, setExpandedObligation] = useState<Obligation | null>(null);
 
   const fetchHistory = useCallback(async (page: number) => {
     setHistoryLoading(true);
@@ -519,9 +512,7 @@ export default function ObligationsPage() {
     try {
       const res = await fetch(`/api/obligations/${id}`);
       const data = await res.json();
-      if (res.ok) {
-        setExpandedObligation(data);
-      }
+      if (res.ok) setExpandedObligation(data);
     } catch (e) {
       console.error("[obligations] handleRowClick failed", e);
     }
@@ -551,30 +542,44 @@ export default function ObligationsPage() {
   };
 
   return (
-    <div className="screen" style={{ maxWidth: 980, margin: "0 auto" }}>
+    <div className="screen" style={{ maxWidth: 1200, margin: "0 auto" }}>
       <div className="page-row">
-        <h1 className="page-title">Obligation Extractor</h1>
-        <p className="page-subtitle">
-          Paste a PDF URL to extract structured compliance obligations using AI.
-        </p>
+        <div>
+          <h1 className="page-title">Extract obligations</h1>
+          <p className="page-subtitle">
+            Paste a PDF URL to extract structured compliance obligations using AI.
+          </p>
+        </div>
       </div>
 
-      {/* Extraction Form */}
-      <form onSubmit={handleSubmit} className="mb-8">
+      <form onSubmit={handleSubmit} style={{ marginBottom: 32 }}>
         <input
           type="url"
           value={url}
           onChange={(e) => setUrl(e.target.value)}
           placeholder="https://www.rbi.org.in/path/to/circular.pdf"
-          className="advisory-input mb-4 w-full"
+          className="advisory-input"
+          style={{ width: "100%", marginBottom: 16 }}
           required
         />
 
-        <div className="mb-4 flex flex-wrap items-end gap-4">
+        <div
+          style={{
+            marginBottom: 16,
+            display: "flex",
+            flexWrap: "wrap",
+            alignItems: "flex-end",
+            gap: 16,
+          }}
+        >
           <div>
             <label
-              className="mb-1 block text-xs"
-              style={{ color: "var(--text-mid)" }}
+              style={{
+                marginBottom: 4,
+                display: "block",
+                fontSize: 11,
+                color: "var(--text-mid)",
+              }}
             >
               Chain Type (optional)
             </label>
@@ -592,10 +597,14 @@ export default function ObligationsPage() {
           </div>
 
           {chainType === "repeal" && (
-            <div className="flex-1">
+            <div style={{ flex: 1, minWidth: 240 }}>
               <label
-                className="mb-1 block text-xs"
-                style={{ color: "var(--text-mid)" }}
+                style={{
+                  marginBottom: 4,
+                  display: "block",
+                  fontSize: 11,
+                  color: "var(--text-mid)",
+                }}
               >
                 Repealed by
               </label>
@@ -604,8 +613,8 @@ export default function ObligationsPage() {
                 value={repealedBy}
                 onChange={(e) => setRepealedBy(e.target.value)}
                 placeholder="Name of replacing circular/regulation"
-                className="advisory-input w-full"
-                style={{ paddingTop: 8, paddingBottom: 8 }}
+                className="advisory-input"
+                style={{ width: "100%", paddingTop: 8, paddingBottom: 8 }}
               />
             </div>
           )}
@@ -620,50 +629,52 @@ export default function ObligationsPage() {
         </button>
       </form>
 
-      {/* Error */}
       {error && (
         <div
-          className="mb-6 rounded-xl text-sm"
           style={{
+            marginBottom: 24,
             background: "var(--danger-bg)",
             color: "var(--danger)",
             padding: "12px 14px",
             borderRadius: 12,
+            fontSize: 13,
           }}
         >
           {error}
         </div>
       )}
 
-      {/* Loading */}
       {loading && (
         <div
-          className="mb-6 py-8 text-sm"
-          style={{ color: "var(--text-mid)" }}
+          style={{
+            marginBottom: 24,
+            paddingTop: 32,
+            paddingBottom: 32,
+            fontSize: 13,
+            color: "var(--text-mid)",
+          }}
         >
-          Loading... Downloading and analyzing circular... this may take 20-30
+          Loading… Downloading and analyzing circular… this may take 20–30
           seconds.
         </div>
       )}
 
-      {/* Result */}
       {result && <ObligationCard item={result} />}
 
-      {/* History Table */}
-      <div className="mt-8">
-        <h2 className="section-heading mb-4">Past Extractions</h2>
+      <div style={{ marginTop: 32 }}>
+        <h2 className="section-heading" style={{ marginBottom: 16 }}>
+          Past Extractions
+        </h2>
 
         {historyLoading && !history.length ? (
-          <p className="text-sm" style={{ color: "var(--text-light)" }}>
-            Loading history...
-          </p>
+          <div className="empty-state">Loading history…</div>
         ) : history.length === 0 ? (
-          <p className="text-sm" style={{ color: "var(--text-light)" }}>
-            No extractions yet.
-          </p>
+          <div className="empty-state">
+            No extractions yet. Run one above and past results will appear here.
+          </div>
         ) : (
           <>
-            <div className="card" style={{ padding: 0, overflow: "hidden" }}>
+            <div className="card" style={{ padding: 0, overflow: "hidden", marginBottom: 16 }}>
               <table className="list-table">
                 <thead>
                   <tr>
@@ -682,9 +693,14 @@ export default function ObligationsPage() {
                       <Fragment key={item.id}>
                         <tr
                           onClick={() => handleRowClick(item.id)}
-                          className="cursor-pointer"
+                          style={{ cursor: "pointer" }}
                         >
-                          <td className="whitespace-nowrap">
+                          <td
+                            style={{
+                              color: "var(--text-mid)",
+                              whiteSpace: "nowrap",
+                            }}
+                          >
                             {new Date(item.created_at).toLocaleDateString(
                               "en-IN",
                               {
@@ -694,15 +710,13 @@ export default function ObligationsPage() {
                               }
                             )}
                           </td>
-                          <td className="max-w-xs truncate">
+                          <td className="client">
                             {item.title || ext?.subject || "Untitled"}
                           </td>
                           <td>{ext?.issuing_authority || "—"}</td>
                           <td>{risk && <RiskBadge level={risk} />}</td>
                           <td>
-                            {item.chain_type && (
-                              <ChainBadge type={item.chain_type} />
-                            )}
+                            {item.chain_type && <ChainBadge type={item.chain_type} />}
                           </td>
                         </tr>
                         {expandedId === item.id && (
@@ -710,10 +724,13 @@ export default function ObligationsPage() {
                             <td colSpan={5} style={{ padding: 16 }}>
                               {!expandedObligation ? (
                                 <p
-                                  className="text-sm"
-                                  style={{ color: "var(--text-light)" }}
+                                  style={{
+                                    fontSize: 13,
+                                    color: "var(--text-light)",
+                                    margin: 0,
+                                  }}
                                 >
-                                  Loading...
+                                  Loading…
                                 </p>
                               ) : (
                                 <ObligationCard item={expandedObligation} />
@@ -728,9 +745,16 @@ export default function ObligationsPage() {
               </table>
             </div>
 
-            {/* Pagination */}
             {historyTotalPages > 1 && (
-              <div className="mt-6 flex items-center justify-center gap-1">
+              <div
+                style={{
+                  marginTop: 24,
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  gap: 4,
+                }}
+              >
                 <button
                   onClick={() => goToHistoryPage(historyPage - 1)}
                   disabled={historyPage === 1}
@@ -743,10 +767,13 @@ export default function ObligationsPage() {
                   p === "..." ? (
                     <span
                       key={`e${i}`}
-                      className="px-2 text-sm"
-                      style={{ color: "var(--text-light)" }}
+                      style={{
+                        padding: "0 8px",
+                        fontSize: 13,
+                        color: "var(--text-light)",
+                      }}
                     >
-                      ...
+                      …
                     </span>
                   ) : (
                     <button

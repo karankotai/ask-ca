@@ -1076,6 +1076,66 @@ a.client-pill-link:active { transform: translateY(0.5px); }
   .app-error-actions { flex-direction: row; }
 }
 
+.flex-wrap-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.obl-chain-badge {
+  display: inline-block;
+  margin-left: 8px;
+  padding: 2px 10px;
+  border-radius: 6px;
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 0.3px;
+}
+
+.obl-expand-btn {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  text-align: left;
+  font-size: 13px;
+  background: transparent;
+  border: none;
+  padding: 0;
+  cursor: pointer;
+  color: inherit;
+  font-family: inherit;
+}
+
+.obl-meta-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 16px;
+  margin-bottom: 16px;
+  font-size: 13px;
+}
+
+.obl-meta-grid p {
+  margin: 0 0 4px;
+  line-height: 1.5;
+}
+
+.obl-detail-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+  font-size: 13px;
+}
+
+.obl-lineage-box {
+  border-radius: 8px;
+  padding: 12px 16px;
+  font-size: 13px;
+  margin-bottom: 4px;
+}
+
+
 /* Filters bar */
 .filters {
   display: flex;
