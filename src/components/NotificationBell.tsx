@@ -2,6 +2,7 @@
 
 import { useEffect, useState, useRef } from "react";
 import { Bell, CheckCheck, X } from "lucide-react";
+import { severityLabel, severityPriorityClass } from "@/lib/utils";
 
 type Notification = {
   id: number;
@@ -236,8 +237,8 @@ export default function NotificationBell() {
                     onMouseLeave={(e) => (e.currentTarget.style.background = "transparent")}
                   >
                     <div style={{ display: "flex", alignItems: "flex-start", gap: 10 }}>
-                      <span className={`priority priority-${sev}`} style={{ marginTop: 2, flexShrink: 0 }}>
-                        {sev}
+                      <span className={severityPriorityClass(sev)} style={{ marginTop: 2, flexShrink: 0 }}>
+                        {severityLabel(sev)}
                       </span>
                       <div style={{ minWidth: 0, flex: 1 }}>
                         <div

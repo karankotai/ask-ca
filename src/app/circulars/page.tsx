@@ -1,4 +1,5 @@
 import { prisma } from "@/lib/prisma";
+import { severityLabel, severityPriorityClass } from "@/lib/utils";
 import Link from "next/link";
 
 export const dynamic = "force-dynamic";
@@ -10,13 +11,6 @@ const SOURCE_TAG: Record<string, string> = {
   EPFO: "tag-epfo",
   GSTN: "tag-gstn",
   "Min. of Labour": "tag-mol",
-};
-
-const SEV_LABEL: Record<string, string> = {
-  critical: "Critical",
-  high: "High",
-  medium: "Medium",
-  low: "Low",
 };
 
 type CircularListParams = {
@@ -171,7 +165,7 @@ export default async function CircularsListPage({
         >
           <option value="all">All severities</option>
           {availableSeverities.map((s) => (
-            <option key={s} value={s}>{SEV_LABEL[s] ?? s}</option>
+            <option key={s} value={s}>{severityLabel(s)}</option>
           ))}
         </select>
         <select
@@ -207,8 +201,8 @@ export default async function CircularsListPage({
             <div className="reg-card-top">
               <span className={`tag ${tag}`}>{c.source}</span>
               <span style={{ fontSize: 11, color: "var(--text-light)" }}>{c.circularNumber}</span>
-              <span className={`priority priority-${c.severity ?? "low"}`}>
-                {SEV_LABEL[c.severity ?? "low"] ?? "Low"}
+              <span className={severityPriorityClass(c.severity)}>
+                {severityLabel(c.severity)}
               </span>
             </div>
             <div className="reg-card-title">{c.title}</div>

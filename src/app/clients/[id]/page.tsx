@@ -37,13 +37,16 @@ export default async function ClientPage({ params }: { params: Promise<{ id: str
       <div className="page-row">
         <div>
           <div className="page-title">{client.name}</div>
-          <div className="page-subtitle">
-            {client.sector} · ₹{client.turnoverCr} cr turnover · {client.city} · {client.ownership}
+          <div className="page-subtitle" style={{ display: "flex", flexWrap: "wrap", alignItems: "center", gap: 10 }}>
+            <span>{client.sector} · ₹{client.turnoverCr} cr turnover · {client.city} · {client.ownership}</span>
+            <span style={{ display: "inline-flex", alignItems: "center", gap: 8 }}>
+              <span aria-hidden style={{ color: "var(--border)" }}>•</span>
+              <span className={`posture-badge posture-${client.postureBadge}`}>
+                {client.postureBadge.replace("_", " ")}
+              </span>
+            </span>
           </div>
         </div>
-        <span className={`posture-badge posture-${client.postureBadge}`}>
-          {client.postureBadge.replace("_", " ")}
-        </span>
       </div>
 
       <div className="section-heading">Counterparty concentration</div>

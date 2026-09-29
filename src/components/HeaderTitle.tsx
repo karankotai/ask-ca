@@ -3,6 +3,7 @@
 import { usePathname } from "next/navigation";
 
 const TITLES: Array<[RegExp, string]> = [
+  [/^\/$/, "Dashboard"],
   [/^\/dashboard/, "Dashboard"],
   [/^\/clients\//, "Client Profile"],
   [/^\/circulars\/[^/]+\/impact/, "Client Impact Analysis"],

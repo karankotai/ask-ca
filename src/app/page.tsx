@@ -1,4 +1,5 @@
 import { prisma } from "@/lib/prisma";
+import { severityLabel, severityPriorityClass } from "@/lib/utils";
 import Link from "next/link";
 
 export const dynamic = "force-dynamic";
@@ -10,13 +11,6 @@ const SOURCE_TAG: Record<string, string> = {
   EPFO: "tag-epfo",
   GSTN: "tag-gstn",
   "Min. of Labour": "tag-mol",
-};
-
-const SEV_LABEL: Record<string, string> = {
-  critical: "Critical",
-  high: "High",
-  medium: "Medium",
-  low: "Low",
 };
 
 function timeGreeting(hour: number): { greeting: string; subtitle: string } {
@@ -91,15 +85,14 @@ export default async function Home() {
           <div className="label">Clients flagged</div>
           <div className="value">{flaggedClients.length}</div>
           <div className={`sub ${flaggedClients.length > 0 ? "warn" : ""}`}>
-            {flaggedClients.length > 0 ? "Action required" : "All on track"}
+            {flaggedClients.length > 0 ? "With critical/high items" : "All on track"}
           </div>
         </Link>
         <Link href="/circulars" className="stat-box clickable" style={{ textDecoration: "none" }}>
           <div className="label">New circulars (7d)</div>
           <div className="value">{recentCirculars.length}</div>
           <div className="sub muted">
-            across {new Set(recentCirculars.flatMap((c) => c.affectedActs)).size} act
-            {new Set(recentCirculars.flatMap((c) => c.affectedActs)).size !== 1 ? "s" : ""}
+            across {new Set(recentCirculars.flatMap((c) => c.affectedActs)).size} act{new Set(recentCirculars.flatMap((c) => c.affectedActs)).size !== 1 ? "s" : ""}
           </div>
         </Link>
         <Link href="/circulars" className="stat-box clickable" style={{ textDecoration: "none" }}>
@@ -117,6 +110,14 @@ export default async function Home() {
       <div className="two-col">
         <div>
           <div className="section-heading">Recent circulars</div>
+          {recentCirculars.length === 0 && (
+            <div className="empty-state" style={{ display: "block", textAlign: "center", padding: "32px 20px" }}>
+              <div style={{ marginBottom: 8, color: "var(--text-mid)" }}>No circulars in the last 7 days.</div>
+              <Link href="/circulars" style={{ color: "var(--accent)", fontSize: 12, fontWeight: 600, textDecoration: "none" }}>
+                Browse all circulars →
+              </Link>
+            </div>
+          )}
           {recentCirculars.slice(0, 4).map((c) => {
             const affected = affectedByCircular.get(c.id) ?? [];
             const tag = SOURCE_TAG[c.source] ?? "tag-default";
@@ -124,8 +125,8 @@ export default async function Home() {
               <Link key={c.id} href={`/circulars/${c.id}`} className="reg-card">
                 <div className="reg-card-top">
                   <span className={`tag ${tag}`}>{c.source}</span>
-                  <span className={`priority priority-${c.severity ?? "low"}`}>
-                    {SEV_LABEL[c.severity ?? "low"] ?? "Low"}
+                  <span className={severityPriorityClass(c.severity)}>
+                    {severityLabel(c.severity)}
                   </span>
                 </div>
                 <div className="reg-card-title">{c.title}</div>
@@ -148,13 +149,13 @@ export default async function Home() {
               </Link>
             );
           })}
-          {recentCirculars.length === 0 && (
-            <div className="empty-state">No circulars in the last 7 days.</div>
-          )}
         </div>
 
         <div>
-          <div className="section-heading">Needs attention today</div>
+          <div className="section-heading">Upcoming &amp; overdue deadlines</div>
+          <div style={{ fontSize: 11, color: "var(--text-light)", marginTop: -8, marginBottom: 14 }}>
+            {allOpenItems.length === 0 ? "All caught up across your book." : "Most urgent open items across all clients — click any to open the client record."}
+          </div>
           <div className="deadlines">
             {allOpenItems.length === 0 && <div className="empty-state">No open items.</div>}
             {allOpenItems.map(({ client, item }) => {
@@ -174,8 +175,8 @@ export default async function Home() {
                     <div className="title">{item.actionRequired}</div>
                     <div className="sub">{client.name} · {item.actName}</div>
                   </div>
-                  <span className={`priority priority-${item.severity}`}>
-                    {item.severity}
+                  <span className={severityPriorityClass(item.severity)}>
+                    {severityLabel(item.severity)}
                   </span>
                 </Link>
               );

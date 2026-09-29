@@ -126,3 +126,30 @@ export function initials(name: string | null | undefined, max = 2): string {
     .join("")
     .toUpperCase();
 }
+
+// --- Severity Labels --------------------------------------------------------
+export const SEVERITY_LABEL: Record<string, string> = {
+  critical: "Critical",
+  high: "High",
+  medium: "Medium",
+  low: "Low",
+  not_affected: "Not Affected",
+};
+
+export function severityLabel(severity: string | null | undefined): string {
+  if (!severity) return "Low";
+  return SEVERITY_LABEL[severity] ?? capitalizeFirst(severity);
+}
+
+export function severityPriorityClass(severity: string | null | undefined): string {
+  const base = "priority";
+  if (!severity) return `${base} priority-low`;
+  const known = ["critical", "high", "medium", "low", "not_affected"];
+  if (known.includes(severity)) return `${base} priority-${severity}`;
+  return `${base} priority-low`;
+}
+
+function capitalizeFirst(s: string): string {
+  if (!s) return s;
+  return s.charAt(0).toUpperCase() + s.slice(1);
+}

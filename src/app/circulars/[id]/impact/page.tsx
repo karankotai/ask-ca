@@ -1,4 +1,5 @@
 import { prisma } from "@/lib/prisma";
+import { severityLabel, severityPriorityClass } from "@/lib/utils";
 import { notFound } from "next/navigation";
 import Link from "next/link";
 import { Send } from "lucide-react";
@@ -7,14 +8,6 @@ import type { ImpactPayload } from "@/types/impact";
 export const dynamic = "force-dynamic";
 
 const SEV_ORDER: Record<string, number> = { critical: 0, high: 1, medium: 2, low: 3, not_affected: 4 };
-
-const SEV_LABEL: Record<string, string> = {
-  critical: "Critical",
-  high: "High",
-  medium: "Medium",
-  low: "Low",
-  not_affected: "Not affected",
-};
 
 type ImpactRow = {
   id: string;
@@ -104,7 +97,7 @@ export default async function ImpactPage({ params, searchParams }: {
                           : `${p.totalCount} txns · ₹${(p.totalAmount / 1e7).toFixed(1)} cr`}
                       </div>
                     </div>
-                    <span className={`priority priority-${p.severity}`}>{SEV_LABEL[p.severity] ?? p.severity}</span>
+                    <span className={severityPriorityClass(p.severity)}>{severityLabel(p.severity)}</span>
                   </div>
                 </Link>
               );
