@@ -1,6 +1,10 @@
 import { prisma } from "@/lib/prisma";
 import Link from "next/link";
-import { FileText, Send, Clock, Check } from "lucide-react";
+import { FileText, Send, Clock, Check, Inbox } from "lucide-react";
+import {
+  severityLabel,
+  severityPriorityClass,
+} from "@/lib/utils";
 
 export const dynamic = "force-dynamic";
 
@@ -11,13 +15,11 @@ const STATUS_LABEL: Record<string, string> = {
 };
 
 export default async function BriefingsPage() {
-  // Pull all draft comms with their client and circular, plus the matching ImpactAnalysis id
   const comms = await prisma.draftComm.findMany({
     include: { client: true, scrapedDocument: true },
     orderBy: { createdAt: "desc" },
   });
 
-  // For each comm, find the corresponding ImpactAnalysis id (so the link can navigate to /comms/[ia-id])
   const impacts = await prisma.impactAnalysis.findMany({
     select: { id: true, circularId: true, clientId: true },
   });
@@ -28,11 +30,27 @@ export default async function BriefingsPage() {
   const reviewed = comms.filter((c) => c.status !== "draft");
 
   return (
-    <div className="screen" style={{ maxWidth: 980, margin: "0 auto" }}>
+    <div className="screen" style={{ maxWidth: 1200, margin: "0 auto" }}>
       <div className="page-row">
         <div>
           <div className="page-title">Briefings</div>
           <div className="page-subtitle">Auto-drafted client communications · pending your review</div>
+        </div>
+        <div style={{
+          display: "inline-flex",
+          alignItems: "center",
+          gap: 6,
+          padding: "6px 12px",
+          borderRadius: 12,
+          background: drafts.length > 0 ? "var(--info-bg)" : "var(--success-bg)",
+          color: drafts.length > 0 ? "var(--info)" : "var(--success)",
+          fontSize: 12,
+          fontWeight: 600,
+        }}>
+          <Inbox size={13} />
+          {drafts.length > 0
+            ? `${drafts.length} item${drafts.length !== 1 ? "s" : ""} pending`
+            : "All clear"}
         </div>
       </div>
 
@@ -60,18 +78,29 @@ export default async function BriefingsPage() {
           {drafts.map((c) => {
             const iaId = iaMap.get(iaKey(c.circularId, c.clientId));
             const href = iaId ? `/comms/${iaId}` : `/circulars/${c.circularId}/impact?client=${c.clientId}`;
+            const circularSeverity = c.scrapedDocument?.severity ?? "medium";
             return (
               <Link key={c.id} href={href} className="reg-card" style={{ borderLeft: "3px solid var(--accent)" }}>
                 <div className="reg-card-top">
                   <div className="advisory-icon" style={{ width: 32, height: 32, borderRadius: 8 }}>
                     <FileText size={16} />
                   </div>
-                  <div style={{ flex: 1 }}>
-                    <div style={{ fontSize: 13, fontWeight: 600, color: "var(--text-dark)" }}>{c.client.name}</div>
+                  <div style={{ flex: 1, minWidth: 0 }}>
+                    <div style={{ fontSize: 13, fontWeight: 600, color: "var(--text-dark)", lineHeight: 1.3 }}>
+                      <a
+                        href={`/clients/${c.clientId}`}
+                        style={{ color: "var(--text-dark)", textDecoration: "none", fontWeight: 600 }}
+                      >
+                        {c.client.name}
+                      </a>
+                    </div>
                     <div style={{ fontSize: 11, color: "var(--text-light)", marginTop: 2 }}>
                       Re: {c.scrapedDocument.title}
                     </div>
                   </div>
+                  <span className={severityPriorityClass(circularSeverity)} style={{ fontSize: 11, padding: "3px 10px" }}>
+                    {severityLabel(circularSeverity)}
+                  </span>
                   <span className="priority priority-medium" style={{ display: "inline-flex", alignItems: "center", gap: 4 }}>
                     <Clock size={11} /> {STATUS_LABEL[c.status]}
                   </span>
@@ -83,7 +112,7 @@ export default async function BriefingsPage() {
                   <span className="affected-text" style={{ display: "inline-flex", alignItems: "center", gap: 6 }}>
                     <Send size={12} /> Open advisory
                   </span>
-                  <div className="client-pills" style={{ marginLeft: "auto" }}>
+                  <div className="client-pills" style={{ marginLeft: "auto", display: "inline-flex", alignItems: "center", gap: 6 }}>
                     <span className="client-pill">{c.channel}</span>
                   </div>
                 </div>
@@ -93,30 +122,36 @@ export default async function BriefingsPage() {
         </>
       )}
 
-      {reviewed.length > 0 && (
+      {comms.length > 0 && (
         <>
           <div className="section-heading" style={{ marginTop: 32 }}>Reviewed</div>
-          <div className="client-list-card">
-            {reviewed.map((c) => {
-              const iaId = iaMap.get(iaKey(c.circularId, c.clientId));
-              const href = iaId ? `/comms/${iaId}` : `/circulars/${c.circularId}/impact?client=${c.clientId}`;
-              return (
-                <Link key={c.id} href={href} className="client-list-item">
-                  <div className="top">
-                    <div style={{ flex: 1, minWidth: 0 }}>
-                      <div className="name">{c.client.name}</div>
-                      <div className="meta" style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
-                        {c.subject}
+          {reviewed.length > 0 ? (
+            <div className="client-list-card">
+              {reviewed.map((c) => {
+                const iaId = iaMap.get(iaKey(c.circularId, c.clientId));
+                const href = iaId ? `/comms/${iaId}` : `/circulars/${c.circularId}/impact?client=${c.clientId}`;
+                return (
+                  <Link key={c.id} href={href} className="client-list-item">
+                    <div className="top">
+                      <div style={{ flex: 1, minWidth: 0 }}>
+                        <div className="name">{c.client.name}</div>
+                        <div className="meta" style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                          {c.subject}
+                        </div>
                       </div>
+                      <span className={`priority priority-${c.status === "sent" ? "low" : "medium"}`} style={{ display: "inline-flex", alignItems: "center", gap: 4 }}>
+                        <Check size={11} /> {STATUS_LABEL[c.status]}
+                      </span>
                     </div>
-                    <span className={`priority priority-${c.status === "sent" ? "low" : "medium"}`} style={{ display: "inline-flex", alignItems: "center", gap: 4 }}>
-                      <Check size={11} /> {STATUS_LABEL[c.status]}
-                    </span>
-                  </div>
-                </Link>
-              );
-            })}
-          </div>
+                  </Link>
+                );
+              })}
+            </div>
+          ) : (
+            <div className="empty-state">
+              No reviewed briefings yet — approve pending items above to move them here.
+            </div>
+          )}
         </>
       )}
 

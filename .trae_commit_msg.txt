@@ -1,31 +1,36 @@
-Calendar list-view status badge fixes
+Briefings page polish: 6 fixes + badge vertical alignment
 
-Issue 1 (done badge 2-line wrap): status-pill did not use inline-flex so
-<Check size={11} /> + "done" text wrapped onto two lines inside the pill.
-Fix in globals.css: add display:inline-flex, align-items/justify-content
-center, gap:4px, white-space:nowrap.
+D1 Screen convention: widen .screen 980px -> 1200px (match dashboard/circulars/impact)
+D2 reg-card-bottom client-pills flex gap now explicit inline (gap:6px) so
+   Open advisory / email pill visual separation is clear; layout space-between
+   already present in globals so no run-on text.
+D3 Use scrapedDocument.severity -> severityPriorityClass/Labels for the
+   per-card severity pill (not blanket priority-medium). Cards now correctly
+   show Ind AS 115 = Medium, 3x Section 188 MCA circulars = High.
+D4 page-row now renders right-aligned inbox summary pill: "N items pending"
+   (info-blue) when drafts > 0 else "All clear" (success-green). Fills the
+   previously empty right slot of page-row with consistent summary.
+D5 Client name line in reg-card-top now links to /clients/:clientId as a
+   plain <a href> (RSC-safe, no onClick event handlers — avoid Circulars-list
+   hydration crash pattern). Click client name -> jump to client profile;
+   click rest of card -> comms editor as before.
+D6 Always render Reviewed section-header; show reviewed client-list if items
+   exist, else show contextual empty-state "No reviewed briefings yet —
+   approve pending items above to move them here." (instead of hiding the
+   Reviewed section entirely when 0 items — consistent pattern).
 
-Issue 2 (lowercase badge labels): pills rendered i.status.replace("_", " ")
-→ "pending", "in progress", "done", "overdue" all lowercase.
-Fix in CalendarTable.tsx: add STATUS_LABEL ProperCase map (Pending, In
-Progress, Done, Overdue) with statusLabel() helper + capitalizeFirst
-fallback. Apply statusLabel() to all pill renders. In done-pill JSX,
-remove space between icon + label (icon + label both inline in flex),
-use {statusLabel(derivedStatus)} not raw.
-
-Bonus fixes bundled with badge work (same component touch site):
-- Derive status=overdue client-side when i.status !== "done" &&
-  i.dueDate < today (via isOverdueDueDate helper). This makes old
-  Apr/May/Jul items correctly render as red Overdue pills (DB rows
-  are status pending/in_progress but dates are stale).
-- Use derivedStatus in filter so filter-select "Overdue" option
-  actually matches rows (earlier it filtered on raw DB status which
-  never equals literal "overdue" string in complianceItems).
-- Progress copy: "N of M items complete" (remove "this month" in
-  list view since default list view shows all 10 compliance items
-  unfiltered by month).
-- Filter dropdown "In Progress" label ProperCase consistently.
+Follow-up D3/D6 alignment fix: User reported severity badges (High/Medium)
+and Draft status badge were not on the same vertical line. Root cause:
+severity pill was rendered INSIDE the middle flex-1 column alongside client
+name; Draft pill was in reg-card-top pushed by margin-left:auto. Different
+vertical centering contexts. Fix: move severity pill OUT of middle column
+into reg-card-top as direct flex sibling after middle div. Now all 4 top-row
+items (icon / middle column / severity pill / Draft pill) are siblings under
+.reg-card-top { align-items:center } → all vertical midpoints match at the
+same px offset. Severity pill bumped from 10px/2x8px to 11px/3x10px to match
+Draft pill visual size.
 
 Files:
-- src/app/globals.css: status-pill inline-flex/nowrap/align CSS
-- src/app/calendar/CalendarTable.tsx: all of the above
+- src/app/briefings/page.tsx: D1-D6 + alignment fix. Imports severityLabel,
+  severityPriorityClass from utils.ts, Inbox icon from lucide.
+- npx tsc --noEmit 0 errors.
