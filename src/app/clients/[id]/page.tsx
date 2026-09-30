@@ -33,7 +33,7 @@ export default async function ClientPage({ params }: { params: Promise<{ id: str
   }));
 
   return (
-    <div className="screen" style={{ maxWidth: 980, margin: "0 auto" }}>
+    <div className="screen" style={{ maxWidth: 1200, margin: "0 auto" }}>
       <div className="page-row">
         <div>
           <div className="page-title">{client.name}</div>
@@ -42,7 +42,10 @@ export default async function ClientPage({ params }: { params: Promise<{ id: str
             <span style={{ display: "inline-flex", alignItems: "center", gap: 8 }}>
               <span aria-hidden style={{ color: "var(--border)" }}>•</span>
               <span className={`posture-badge posture-${client.postureBadge}`}>
-                {client.postureBadge.replace("_", " ")}
+                {client.postureBadge
+                  .split("_")
+                  .map((w) => w.charAt(0).toUpperCase() + w.slice(1).toLowerCase())
+                  .join(" ")}
               </span>
             </span>
           </div>
