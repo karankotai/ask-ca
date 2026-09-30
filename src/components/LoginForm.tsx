@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { useState } from "react";
 import { signIn } from "next-auth/react";
 import { useSearchParams } from "next/navigation";
@@ -96,6 +97,10 @@ export default function LoginForm() {
             {loading ? "Signing in..." : "Sign In"}
           </button>
         </form>
+
+        <div className="login-links">
+          Don&apos;t have an account? &nbsp;<Link href="/signup">Create one</Link>
+        </div>
       </div>
     </div>
   );

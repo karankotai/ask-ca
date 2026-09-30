@@ -1,5 +1,5 @@
 import { NextRequest } from "next/server";
-import { resetDemoState } from "../../../../../scripts/reset-demo";
+import { resetDemoState } from "../../../../../../scripts/reset-demo";
 import { withAuth, NextResponse } from "@/lib/auth";
 
 export async function POST(req: NextRequest) {

@@ -4,7 +4,7 @@ import { compare } from "bcryptjs";
 import type { NextRequest } from "next/server";
 import { NextResponse } from "next/server";
 import { z, type ZodTypeAny } from "zod";
-
+import { prisma } from "@/lib/prisma";
 import { env } from "@/lib/env";
 import { logError, logWarn } from "@/lib/logging";
 import {
@@ -50,32 +50,45 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
         const email = String(credentials.email).toLowerCase().trim();
         const password = String(credentials.password);
 
-        if (email !== ADMIN_EMAIL) {
-          logWarn("auth.authorize.fail", `Unknown email: ${email}`);
-          return null;
-        }
-
-        if (!env.ADMIN_PASSWORD_HASH) {
-          logWarn(
-            "auth.authorize.fail",
-            "ADMIN_PASSWORD_HASH not set — login disabled",
-          );
-          return null;
-        }
-        let ok = false;
         try {
-          const compareResult = await compare(password, env.ADMIN_PASSWORD_HASH);
-          ok = Boolean(compareResult);
+          const dbUser = await prisma.user.findUnique({ where: { email } });
+
+          if (dbUser) {
+            let ok = false;
+            try {
+              ok = Boolean(await compare(password, dbUser.passwordHash));
+            } catch (e) {
+              logError("auth.dbUser.bcrypt.compare", e);
+              return null;
+            }
+            if (!ok) {
+              logWarn("auth.authorize.dbUser.fail", `Wrong password for ${email}`);
+              return null;
+            }
+            const role = dbUser.role === "admin" ? "admin" : "user";
+            return { id: dbUser.id, email: dbUser.email, role };
+          }
         } catch (e) {
-          logError("auth.bcrypt.compare", e);
-          return null;
+          logError("auth.authorize.dbLookup", e);
         }
 
-        if (!ok) {
-          logWarn("auth.authorize.fail", `Wrong password for ${email}`);
-          return null;
+        if (email === ADMIN_EMAIL && env.ADMIN_PASSWORD_HASH) {
+          let ok = false;
+          try {
+            ok = Boolean(await compare(password, env.ADMIN_PASSWORD_HASH));
+          } catch (e) {
+            logError("auth.envAdmin.bcrypt.compare", e);
+            return null;
+          }
+          if (!ok) {
+            logWarn("auth.authorize.envAdmin.fail", `Wrong password for ${email}`);
+            return null;
+          }
+          return { id: "admin", email: ADMIN_EMAIL, role: "admin" as const };
         }
-        return { id: "admin", email: ADMIN_EMAIL, role: "admin" as const };
+
+        logWarn("auth.authorize.unknown", `No user for email: ${email}`);
+        return null;
       },
     }),
   ],

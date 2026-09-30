@@ -2000,6 +2000,27 @@ a.client-pill-link:active { transform: translateY(0.5px); }
   width: 100%;
 }
 
+.login-links {
+  display: flex;
+  justify-content: center;
+  margin: -8px 0 0;
+  font-size: 14px;
+  color: #a1a1aa;
+}
+
+.login-links a {
+  color: #34d399;
+  text-decoration: none;
+  font-weight: 500;
+  transition: color 160ms ease;
+}
+
+.login-links a:hover {
+  color: #10b981;
+  text-decoration: underline;
+}
+
+
 
 
 /* Filters bar */
