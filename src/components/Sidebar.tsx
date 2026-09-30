@@ -39,10 +39,10 @@ type SidebarProps = {
 
 const NAV: NavItem[] = [
   {
-    href: "/",
+    href: "/dashboard",
     label: "Dashboard",
     icon: LayoutGrid,
-    match: (p) => p === "/",
+    match: (p) => p === "/" || p === "/dashboard",
   },
   {
     href: "/circulars",
