@@ -195,6 +195,11 @@ export default function MarketingPage() {
             <Link href="/login">Sign in</Link>
           </div>
           <div className="m-nav-ctas">
+            <form action="/api/auth/demo-login" method="POST" className="m-nav-try-form">
+              <button type="submit" className="btn btn-ghost m-nav-try">
+                Try it out
+              </button>
+            </form>
             <Link href="/signup" className="btn btn-primary m-nav-signup">
               Create account <ArrowRight size={14} />
             </Link>
@@ -214,23 +219,29 @@ export default function MarketingPage() {
             maps it to each client's profile, and drafts your advisory — before
             anyone else has finished reading it.
           </p>
-          <form className="m-waitlist" onSubmit={onWaitlistSubmit}>
-            <div className="m-waitlist-input-wrap">
-              <Mail size={16} className="m-waitlist-icon" />
-              <input
-                className="m-waitlist-input"
-                type="email"
-                value={waitlistEmail}
-                onChange={(e) => setWaitlistEmail(e.target.value)}
-                placeholder="you@company.com"
-                required
-              />
-            </div>
-            <button className="btn btn-primary m-waitlist-btn" type="submit">
-              {submitted === "waitlist" ? "You're on the list" : "Join Waitlist"}
-              {submitted !== "waitlist" && <ArrowRight size={14} />}
-            </button>
-          </form>
+          <div className="m-hero-actions">
+            <form action="/api/auth/demo-login" method="POST" className="m-hero-try-form">
+              <button type="submit" className="btn btn-primary m-hero-try">
+                Try the dashboard <ArrowRight size={14} />
+              </button>
+            </form>
+            <form className="m-waitlist" onSubmit={onWaitlistSubmit}>
+              <div className="m-waitlist-input-wrap">
+                <Mail size={16} className="m-waitlist-icon" />
+                <input
+                  className="m-waitlist-input"
+                  type="email"
+                  value={waitlistEmail}
+                  onChange={(e) => setWaitlistEmail(e.target.value)}
+                  placeholder="you@company.com"
+                  required
+                />
+              </div>
+              <button className="btn btn-ghost m-waitlist-btn" type="submit">
+                {submitted === "waitlist" ? "You're on the list" : "Join Waitlist"}
+              </button>
+            </form>
+          </div>
           <a className="m-hero-demo" href="#">
             Or book a 15-min demo call
           </a>
@@ -451,23 +462,29 @@ export default function MarketingPage() {
           <p className="m-cta-sub">
             Join the early access list and be among the first to use RegMitra.
           </p>
-          <form className="m-waitlist m-waitlist-cta" onSubmit={onCtaSubmit}>
-            <div className="m-waitlist-input-wrap">
-              <Mail size={16} className="m-waitlist-icon" />
-              <input
-                className="m-waitlist-input"
-                type="email"
-                value={ctaEmail}
-                onChange={(e) => setCtaEmail(e.target.value)}
-                placeholder="you@company.com"
-                required
-              />
-            </div>
-            <button className="btn btn-primary m-waitlist-btn" type="submit">
-              {submitted === "cta" ? "You're on the list" : "Join Waitlist"}
-              {submitted !== "cta" && <ArrowRight size={14} />}
-            </button>
-          </form>
+          <div className="m-cta-actions">
+            <form className="m-waitlist m-waitlist-cta" onSubmit={onCtaSubmit}>
+              <div className="m-waitlist-input-wrap">
+                <Mail size={16} className="m-waitlist-icon" />
+                <input
+                  className="m-waitlist-input"
+                  type="email"
+                  value={ctaEmail}
+                  onChange={(e) => setCtaEmail(e.target.value)}
+                  placeholder="you@company.com"
+                  required
+                />
+              </div>
+              <button className="btn btn-primary m-waitlist-btn" type="submit">
+                {submitted === "cta" ? "You're on the list" : "Join Waitlist"}
+              </button>
+            </form>
+            <form action="/api/auth/demo-login" method="POST" className="m-cta-try-form">
+              <button type="submit" className="btn btn-ghost m-cta-try">
+                Or try the demo dashboard <ArrowRight size={14} />
+              </button>
+            </form>
+          </div>
           <ul className="m-cta-perks">
             <li>Early access before public launch</li>
             <li>Founding member pricing — locked in forever</li>

@@ -40,6 +40,7 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
   secret: env.NEXTAUTH_SECRET,
   providers: [
     Credentials({
+      id: "credentials",
       name: "Credentials",
       credentials: {
         email: { label: "Email", type: "email" },
@@ -89,6 +90,21 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
 
         logWarn("auth.authorize.unknown", `No user for email: ${email}`);
         return null;
+      },
+    }),
+    Credentials({
+      id: "demo",
+      name: "Demo",
+      credentials: {
+        demo: { label: "Demo", type: "hidden" },
+      },
+      async authorize() {
+        return {
+          id: "demo",
+          email: "demo@regmitra.com",
+          name: "Demo User",
+          role: "admin" as const,
+        };
       },
     }),
   ],
